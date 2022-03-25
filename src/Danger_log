@@ -1,0 +1,2 @@
+1. A user can only use <transactions> to query or cancel his own orders
+2. the value of amount attr can not be 0, since it makes no sence to buy or sell nothing
