@@ -257,7 +257,6 @@ void order_match(int order_id, pqxx::connection* C) {
     ss << "UPDATE SYM_ORDER SET STATUS='executed', AMOUNT=" << amount << ", PRICE=" << price << ", CREATE_AT=now() WHERE ID=" << id2 << ";";
     if (amount2 > amount) { //need to split order
       ss << "INSERT INTO SYM_ORDER(ORDER_ID, ACCOUNT_ID, STATUS, SYMBOL, AMOUNT, PRICE, CREATE_AT) VALUES (" << order_id2 << ", " << account_id2 << ", 'open', " << W.quote(symbol) << ", " << amount2 - amount << ", " << price2 << ", to_timestamp(" << time2 << "));";
-      std::cout << time2 << std::endl;
     }
     W.exec(ss.str());
     // for seller: add money; change order status; possiblely split order
@@ -273,11 +272,122 @@ void order_match(int order_id, pqxx::connection* C) {
 }
 
 rapidxml::xml_node<>* cancel_order(std::string user_id, rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, pqxx::connection* C) {
-  return nullptr;
+  rapidxml::xml_node<>* res_node = nullptr;
+  res_node = res_doc->allocate_node(rapidxml::node_element, "canceled");
+  rapidxml::xml_attribute<> *attr = node->first_attribute("id");
+  if (attr == 0) {
+    std::cerr << "Transaction_Cancel: do not have order id\n";
+    return nullptr;
+  }
+  std::string id(attr->value());
+  char * id_ch = res_doc->allocate_string(id.c_str());
+  res_node->append_attribute(res_doc->allocate_attribute("id", id_ch)); 
+  pqxx::work W(*C);
+  pqxx::result R2;
+  try {
+    std::stringstream ss;
+    ss << "UPDATE SYM_ORDER SET STATUS='canceled', CREATE_AT=now() WHERE ORDER_ID=" << W.quote(id) << "AND ACCOUNT_ID=" << W.quote(user_id) << "AND STATUS='open' RETURNING SYMBOL, AMOUNT, PRICE::numeric;";
+    pqxx::result R = W.exec(ss.str());
+    ss.str("");
+    if (R.begin() != R.end()) { // need to refund
+      std::string symbol;
+      double amount, price;
+      symbol = R.begin()[0].as<std::string>();
+      amount = R.begin()[1].as<double>();
+      price = R.begin()[2].as<double>();
+      if (amount < 0) { // refund position
+        ss << "UPDATE POSITION SET AMOUNT=AMOUNT+'" << -amount << "' WHERE ACCOUNT_ID=" << W.quote(user_id) << "AND SYMBOL=" << W.quote(symbol) << ";";
+      } else { // refund balance
+        ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << amount * price << "' WHERE ACCOUNT_ID=" << W.quote(user_id) << ";";
+      }
+    }
+    // print detailed info for order
+    ss << "SELECT STATUS, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT) FROM SYM_ORDER WHERE ORDER_ID=" << W.quote(id) << ";";
+    R2 = W.exec(ss.str());
+    W.commit();
+  }
+  catch (const pqxx::pqxx_exception & e) {
+    W.abort();
+    std::cerr << "Database Error in <transactions> <cancel>: " << e.base().what() << std::endl;
+    return nullptr;
+  }
+  catch (const std::exception &e){
+    W.abort();
+    std::cerr << "Error in <transactions> <cancel>: " << e.what() << std::endl;
+    return nullptr;
+  }
+  print_order_status(&R2, res_node, res_doc);
+  return res_node;
 }
 
 rapidxml::xml_node<>* query_order(std::string user_id, rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, pqxx::connection* C) {
-  return nullptr;
+  rapidxml::xml_node<>* res_node = nullptr;
+  res_node = res_doc->allocate_node(rapidxml::node_element, "status");
+  rapidxml::xml_attribute<> *attr = node->first_attribute("id");
+  if (attr == 0) {
+    std::cerr << "Transaction_Query: do not have order id\n";
+    return nullptr;
+  }
+  std::string id(attr->value()); 
+  char * id_ch = res_doc->allocate_string(id.c_str());
+  res_node->append_attribute(res_doc->allocate_attribute("id", id_ch)); 
+  pqxx::work W(*C);
+  pqxx::result R2;
+  try {
+    std::stringstream ss;
+    ss << "SELECT STATUS, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT) FROM SYM_ORDER WHERE ORDER_ID=" << W.quote(id) << ";";
+    R2 = W.exec(ss.str());
+    W.commit();
+  }
+  catch (const pqxx::pqxx_exception & e) {
+    W.abort();
+    std::cerr << "Database Error in <transactions> <query>: " << e.base().what() << std::endl;
+    return nullptr;
+  }
+  catch (const std::exception &e){
+    W.abort();
+    std::cerr << "Error in <transactions> <query>: " << e.what() << std::endl;
+    return nullptr;
+  }
+  print_order_status(&R2, res_node, res_doc);
+  return res_node;
+}
+
+void print_order_status(pqxx::result* R2, rapidxml::xml_node<>* res_node, rapidxml::xml_document<>* res_doc) {
+  std::string status, time_str;
+  double amt, prc;
+  int time;
+  for (pqxx::result::const_iterator iter = R2->begin(); iter != R2->end(); ++iter) {
+    status = iter[0].as<std::string>();
+    amt = iter[1].as<double>();
+    prc = iter[2].as<double>();
+    time_str = iter[3].as<std::string>();
+    time = stoi(time_str);
+    if (status == "open") {
+      rapidxml::xml_node<>* res_child_node = res_doc->allocate_node(rapidxml::node_element, "open");
+      res_node->append_node(res_child_node);
+      char * amt_ch = res_doc->allocate_string(std::to_string(abs(amt)).c_str());
+      res_child_node->append_attribute(res_doc->allocate_attribute("shares", amt_ch));
+    } else if (status == "canceled") {
+      rapidxml::xml_node<>* res_child_node = res_doc->allocate_node(rapidxml::node_element, "canceled");
+      res_node->append_node(res_child_node);
+      char * amt_ch = res_doc->allocate_string(std::to_string(abs(amt)).c_str());
+      res_child_node->append_attribute(res_doc->allocate_attribute("shares", amt_ch));
+      char * time_ch = res_doc->allocate_string(std::to_string(time).c_str());
+      res_child_node->append_attribute(res_doc->allocate_attribute("time", time_ch));
+    } else if (status == "executed") {
+      rapidxml::xml_node<>* res_child_node = res_doc->allocate_node(rapidxml::node_element, "executed");
+      res_node->append_node(res_child_node);
+      char * amt_ch = res_doc->allocate_string(std::to_string(abs(amt)).c_str());
+      res_child_node->append_attribute(res_doc->allocate_attribute("shares", amt_ch));
+      char * prc_ch = res_doc->allocate_string(std::to_string(prc).c_str());
+      res_child_node->append_attribute(res_doc->allocate_attribute("price", prc_ch));
+      char * time_ch = res_doc->allocate_string(std::to_string(time).c_str());
+      res_child_node->append_attribute(res_doc->allocate_attribute("time", time_ch));
+    } else {
+      std::cerr << "Invalid status: " << status << std::endl;
+    }
+  }
 }
 
 int main() {
@@ -301,17 +411,17 @@ int main() {
   rapidxml::xml_node<>* order = req_doc.allocate_node(rapidxml::node_element, "order");
   req_node->append_node(order);
   order->append_attribute(req_doc.allocate_attribute("sym", "ABC"));
-  order->append_attribute(req_doc.allocate_attribute("amount", "-100"));
-  order->append_attribute(req_doc.allocate_attribute("limit", "80"));
+  order->append_attribute(req_doc.allocate_attribute("amount", "100"));
+  order->append_attribute(req_doc.allocate_attribute("limit", "200"));
   rapidxml::xml_node<>* query1 = req_doc.allocate_node(rapidxml::node_element, "query");
   req_node->append_node(query1);
-  query1->append_attribute(req_doc.allocate_attribute("id", "3"));
+  query1->append_attribute(req_doc.allocate_attribute("id", "46"));
   rapidxml::xml_node<>* cancel = req_doc.allocate_node(rapidxml::node_element, "cancel");
   req_node->append_node(cancel);
-  cancel->append_attribute(req_doc.allocate_attribute("id", "3"));
+  cancel->append_attribute(req_doc.allocate_attribute("id", "46"));
   rapidxml::xml_node<>* query2 = req_doc.allocate_node(rapidxml::node_element, "query");
   req_node->append_node(query2);
-  query2->append_attribute(req_doc.allocate_attribute("id", "3"));
+  query2->append_attribute(req_doc.allocate_attribute("id", "46"));
   std::string req;
   rapidxml::print(std::back_inserter(req), req_doc, 0); 
   std::string res = execute_request(req, C);

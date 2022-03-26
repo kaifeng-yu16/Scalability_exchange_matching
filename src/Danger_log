@@ -1,3 +1,5 @@
-1. A user can only use <transactions> to query or cancel his own orders
-2. the value of amount attr can not be 0, since it makes no sence to buy or sell nothing
-3. server can not match buy/sell from the same account
+A few detailed assumptions:
+  1. A user can only use <transactions> to query or cancel his own orders
+  2. the value of amount attr can not be 0, since it makes no sence to buy or sell nothing
+  3. server can not match buy/sell from the same account
+  4. If the <cancel> tag or <query> tag has do not id attributes, they will print a error message and will not print any results.
