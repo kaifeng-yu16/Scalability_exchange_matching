@@ -135,27 +135,43 @@ rapidxml::xml_node<>* add_new_order(std::string user_id, rapidxml::xml_node<>* n
       ss << "UPDATE ACCOUNT SET BALANCE=BALANCE-'" << stod(limit) * stod(amount) << "' WHERE ACCOUNT_ID=" << W.quote(user_id) << "; ";
       ss << "INSERT INTO SYMBOL VALUES (" << W.quote(sym) << ") ON CONFLICT(NAME) DO NOTHING; ";
       ss << "INSERT INTO SYM_ORDER(ACCOUNT_ID, STATUS, SYMBOL, AMOUNT, PRICE) VALUES (" << W.quote(user_id) << ", 'open', " << W.quote(sym) << ", " << W.quote(amount) << ", " << W.quote(limit) << ") RETURNING ORDER_ID;" ;       
-      pqxx::result R2(W.exec(ss.str()));
-      W.commit();
-      res_node = res_doc->allocate_node(rapidxml::node_element, "opened");
-      copy_attr(node, res_doc, res_node);
-      int order_id = R2.begin()[0].as<int>();
-      char * order_id_char = res_doc->allocate_string(std::to_string(order_id).c_str()); 
-      res_node->append_attribute(res_doc->allocate_attribute("id", order_id_char)); 
-      order_match(order_id, C);
-      return res_node;
     }
     else if (stod(amount) < 0) { // sell order
-    
+      double pos_amount = -stod(amount);
+      ss << "SELECT AMOUNT FROM POSITION WHERE ACCOUNT_ID=" << W.quote(user_id) << " AND SYMBOL=" << W.quote(sym) << " AND AMOUNT>=" << pos_amount << " FOR UPDATE;";
+      pqxx::result R(W.exec(ss.str()));
+      if (R.begin() == R.end()) { // balance insufficient 
+        W.abort();
+        res_node = res_doc->allocate_node(rapidxml::node_element, "error", "insufficient symbol to sell");
+        copy_attr(node, res_doc, res_node);
+        return res_node;
+      }
+      ss.str("");
+      ss << "UPDATE POSITION SET AMOUNT=AMOUNT-'" << pos_amount << "' WHERE ACCOUNT_ID=" << W.quote(user_id) << " AND SYMBOL=" << W.quote(sym) << ";";
+      ss << "INSERT INTO SYM_ORDER(ACCOUNT_ID, STATUS, SYMBOL, AMOUNT, PRICE) VALUES (" << W.quote(user_id) << ", 'open', " << W.quote(sym) << ", " << W.quote(amount) << ", " << W.quote(limit) << ") RETURNING ORDER_ID;" ;       
     } else { // amount==0 => make no sense
       throw std::exception();
     }
-    return res_node;
+    pqxx::result R2(W.exec(ss.str()));
+    W.commit();
+    res_node = res_doc->allocate_node(rapidxml::node_element, "opened");
+    copy_attr(node, res_doc, res_node);
+    int order_id = R2.begin()[0].as<int>();
+    char * order_id_char = res_doc->allocate_string(std::to_string(order_id).c_str()); 
+    res_node->append_attribute(res_doc->allocate_attribute("id", order_id_char)); 
+    try {
+      order_match(order_id, C);
+      return res_node;
+    }
+    catch (const pqxx::pqxx_exception & e) {
+      std::cerr << "Match order error: " << e.base().what() << std::endl;
+      return res_node;
+    }
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
     std::cerr << "Database Error in <transactions> <order>: " << e.base().what() << std::endl;
-    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Invalid order, can not execute by database");
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Order can not execute by database, might have invalid input.");
     copy_attr(node, res_doc, res_node);
     return res_node;
   }
@@ -168,6 +184,92 @@ rapidxml::xml_node<>* add_new_order(std::string user_id, rapidxml::xml_node<>* n
 }
 
 void order_match(int order_id, pqxx::connection* C) {
+  pqxx::result R; 
+  // 1 for seller, 2 for buyer
+  int id1, id2, account_id1, account_id2, order_id1, order_id2;
+  std::string time1, time2;
+  double price, amount1, amount2, price1, price2;
+  std::string symbol;
+  while (1) {
+    std::stringstream ss;
+    pqxx::work W(*C);
+    ss << "SELECT ID, SYMBOL, AMOUNT, PRICE::numeric, ACCOUNT_ID, EXTRACT(EPOCH FROM CREATE_AT) FROM SYM_ORDER WHERE ORDER_ID=" << order_id << " AND STATUS='open' FOR UPDATE;";
+    pqxx::result R = W.exec(ss.str());
+    if (R.begin() == R.end()) {
+      W.abort();
+      return;
+    }
+    double amount = R.begin()[2].as<double>();
+    if (amount < 0) { // seller
+      id1 = R.begin()[0].as<int>();
+      symbol = R.begin()[1].as<std::string>();
+      amount1 = -R.begin()[2].as<double>();
+      price1 = R.begin()[3].as<double>();
+      account_id1 = R.begin()[4].as<int>();
+      time1 = R.begin()[5].as<std::string>();
+      order_id1 = order_id;
+      ss.str("");
+      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id1 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT>0 AND PRICE>='" << price1 << "' ORDER BY PRICE DESC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
+      pqxx::result R2 = W.exec(ss.str());
+      if (R2.begin() == R2.end()) {
+        W.abort();
+        return;
+      }
+      id2 = R2.begin()[0].as<int>();
+      order_id2 = R2.begin()[1].as<int>();
+      amount2 = R2.begin()[2].as<double>();
+      price2 = R2.begin()[3].as<double>();
+      time2 = R2.begin()[4].as<std::string>(); 
+      account_id2 = R2.begin()[5].as<int>();
+    } else { // buyer
+      id2 = R.begin()[0].as<int>();
+      symbol = R.begin()[1].as<std::string>();
+      amount2 = R.begin()[2].as<double>();
+      price2 = R.begin()[3].as<double>();
+      account_id2 = R.begin()[4].as<int>();
+      time2 = R.begin()[5].as<std::string>();
+      order_id2 = order_id;
+      ss.str("");
+      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id2 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT<0 AND PRICE<='" << price2 << "' ORDER BY PRICE ASC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
+      pqxx::result R2 = W.exec(ss.str());
+      if (R2.begin() == R2.end()) {
+        W.abort();
+        return;
+      }
+      id1 = R2.begin()[0].as<int>();
+      order_id1 = R2.begin()[1].as<int>();
+      amount1 = -R2.begin()[2].as<double>();
+      price1 = R2.begin()[3].as<double>();
+      time1 = R2.begin()[4].as<std::string>(); 
+      account_id1 = R2.begin()[5].as<int>();
+    }
+    // select amount & price to execute
+    amount = amount1 < amount2 ? amount1 : amount2;
+    price = stod(time1) < stod(time2) ? price1 : price2;
+    // execute both order
+    // for buyer: create position(if nessecery); add sym; possibly refund; change order status; possiblely split order
+    ss.str("");
+    ss << "INSERT INTO POSITION VALUES(" << account_id2 << ", " << W.quote(symbol) << ", 0) ON CONFLICT(ACCOUNT_ID, SYMBOL) DO NOTHING;";
+    ss << "UPDATE POSITION SET AMOUNT=AMOUNT+'" << amount << "' WHERE ACCOUNT_ID=" << account_id2 << " AND SYMBOL=" << W.quote(symbol) << ";";
+    if (price < price2) {
+      ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << (price2 - price) * amount << "' WHERE ACCOUNT_ID=" << account_id2 << ";";
+    }
+    ss << "UPDATE SYM_ORDER SET STATUS='executed', AMOUNT=" << amount << ", PRICE=" << price << ", CREATE_AT=now() WHERE ID=" << id2 << ";";
+    if (amount2 > amount) { //need to split order
+      ss << "INSERT INTO SYM_ORDER(ORDER_ID, ACCOUNT_ID, STATUS, SYMBOL, AMOUNT, PRICE, CREATE_AT) VALUES (" << order_id2 << ", " << account_id2 << ", 'open', " << W.quote(symbol) << ", " << amount2 - amount << ", " << price2 << ", to_timestamp(" << time2 << "));";
+      std::cout << time2 << std::endl;
+    }
+    W.exec(ss.str());
+    // for seller: add money; change order status; possiblely split order
+    ss.str("");
+    ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << price * amount << "' WHERE ACCOUNT_ID=" << account_id1 << ";";
+    ss << "UPDATE SYM_ORDER SET STATUS='executed', AMOUNT=" << -amount << ", PRICE=" << price << ", CREATE_AT=now() WHERE ID=" << id1 << ";";
+    if (amount1 > amount) { // need to split order
+      ss << "INSERT INTO SYM_ORDER(ORDER_ID, ACCOUNT_ID, STATUS, SYMBOL, AMOUNT, PRICE, CREATE_AT) VALUES (" << order_id1 << ", " << account_id1 << ", 'open', " << W.quote(symbol) << ", " << amount - amount1 << ", " << price1 << ", to_timestamp(" << time1 << "));";
+    } 
+    W.exec(ss.str());
+    W.commit(); 
+  }
 }
 
 rapidxml::xml_node<>* cancel_order(std::string user_id, rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, pqxx::connection* C) {
@@ -199,8 +301,8 @@ int main() {
   rapidxml::xml_node<>* order = req_doc.allocate_node(rapidxml::node_element, "order");
   req_node->append_node(order);
   order->append_attribute(req_doc.allocate_attribute("sym", "ABC"));
-  order->append_attribute(req_doc.allocate_attribute("amount", "100"));
-  order->append_attribute(req_doc.allocate_attribute("limit", "200"));
+  order->append_attribute(req_doc.allocate_attribute("amount", "-100"));
+  order->append_attribute(req_doc.allocate_attribute("limit", "80"));
   rapidxml::xml_node<>* query1 = req_doc.allocate_node(rapidxml::node_element, "query");
   req_node->append_node(query1);
   query1->append_attribute(req_doc.allocate_attribute("id", "3"));
