@@ -1,13 +1,14 @@
 #ifndef REQUEST__H
 #define REQUEST__H
 
+#include <string>
+#include <cstring>
 #include <cstdlib>
 #include <exception>
-#include <cstring>
+#include <sstream>
+#include <fstream>
 #include <iostream>
 #include <pqxx/pqxx>
-#include <string>
-#include <sstream>
 #include "../lib/rapidxml_ext.hpp"
 
 std::string execute_request(std::string req, pqxx::connection* C);
@@ -28,5 +29,3 @@ void order_match(int order_id, pqxx::connection* C);
 
 void print_order_status(pqxx::result* R2, rapidxml::xml_node<>* res_node, rapidxml::xml_document<>* res_doc); 
 #endif
-
-
