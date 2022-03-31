@@ -24,3 +24,14 @@ void Client::start() {
         exit(EXIT_FAILURE);
     }
 }
+
+int Client::recv(std::vector<char> * buf) {
+    int buf_size = buf->size() - 1;
+    char * buf_ptr = buf->data();
+    do {
+      len = recv(socket_fd, buf_ptr, sizeof(char) * buf_size, 0);
+      buf_size -= len;
+      buf_ptr += len;
+    } while (len > 0  && buf_size > 0);
+    return buf->size() - 1 - buf_size; 
+}

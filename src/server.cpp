@@ -31,7 +31,7 @@ void * process_request(void * _info) {
     len = recv(info->client_info->fd, buf_ptr, sizeof(char) * buf_size, 0);
     buf_size -= len;
     buf_ptr += len;
-   } while (len > 0  && buf_size > 0);
+  } while (len > 0  && buf_size > 0);
   if (buf_size < xml_len) {
 		std::string req(buf.data());
     pqxx::connection *C = nullptr;
@@ -39,7 +39,9 @@ void * process_request(void * _info) {
       C = start_connection();
     }
 		std::string resp = execute_request(req, C);
-		send(info->client_info->fd, resp.c_str(), resp.size(), 0);
+    unsigned size = resp.size();
+    send(info->client_info->fd, (char*)&size, sizeof(unsigned),0);
+    send(info->client_info->fd, resp.c_str(), resp.size(), 0);
   
     C->disconnect();
 	}

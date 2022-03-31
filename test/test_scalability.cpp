@@ -24,9 +24,13 @@ int main(int argc, char ** argv) {
     std::cout << "./client host_name thread_num exec_time\n";
     return -1;
   }
+  // parameters
+  size_t account_num = 1000;
+  size_t sym_num = 100;
+  // pre created a bunch of account and sym and order
   std::vector<std::thread> threads;
   for (size_t i = 0 ; i < thread_num; ++i) {
-    threads.push_back(std::thread(send_transactions, host_name));
+    threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num));
   }
   
   // start timing
