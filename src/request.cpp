@@ -591,20 +591,20 @@ void create_table(pqxx::connection* C) {
 
 pqxx::connection* start_connection() {
   pqxx::connection *C;
-        try{
-                C = new pqxx::connection("dbname=STOCK_MARKET user=postgres password=passw0rd");
-                if (C->is_open()) {
-                        std::cout << "Opened database successfully: " << C->dbname() << std::endl;
-                } else {
-                        std::cerr << "Can't open database" << std::endl;
-                        return nullptr;
-                }
-        } catch (const std::exception &e){
-                std::cerr << e.what() << std::endl;
-                return nullptr;
-        }
+  try{
+    C = new pqxx::connection("dbname=STOCK_MARKET user=postgres password=passw0rd");
+    if (C->is_open()) {
+      std::cout << "Opened database successfully: " << C->dbname() << std::endl;
+    } else {
+      std::cerr << "Can't open database" << std::endl;
+      return nullptr;
+    }
+  } catch (const std::exception &e){
+    std::cerr << e.what() << std::endl;
+    return nullptr;
+  }
 
-        create_table(C);
+  create_table(C);
   return C;
 }
 
