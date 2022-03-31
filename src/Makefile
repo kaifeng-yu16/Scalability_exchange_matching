@@ -1,6 +1,6 @@
 CC=g++
 
-TARGETS=request
+TARGETS=server client
 CFLAGS=-std=gnu++17 -pedantic -Wall -Werror -ggdb3 -pthread
 EXTRAFLAGS=-lpqxx -lpq
 
@@ -9,9 +9,8 @@ all: $(TARGETS)
 clean:
 	rm -f $(TARGETS) *.o
 
-request: request.o 
-	g++ -o $@ $^ -lpthread $(EXTRAFLAGS)
+server: server.cpp request.cpp 
+	g++ $^ -o $@ -lpthread $(EXTRAFLAGS)
 
-request.o: request.cpp  
-	g++ $(CFLAGS) -c  $< 
-
+client: client.cpp
+	g++ -o $@ $<

@@ -4,7 +4,7 @@ std::string execute_request(std::string req, pqxx::connection* C) {
   try {
     std::string response = "";
     rapidxml::xml_document<> doc;  
-    doc.parse<0>(req.data()); 
+    doc.parse<0>(const_cast<char*>(req.data())); 
     rapidxml::xml_node<>* root = doc.first_node();
     if (std::strcmp(root->name(), "create") == 0) {
       response = create_req(root, C);
@@ -22,7 +22,6 @@ std::string execute_request(std::string req, pqxx::connection* C) {
     return "";
   }
 }
-
 
 void copy_attr(rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, rapidxml::xml_node<>* res_node) {
   for (rapidxml::xml_attribute<> *attr = node->first_attribute(); attr != 0; attr=attr->next_attribute()) {
@@ -569,30 +568,6 @@ void print_order_status(pqxx::result* R2, rapidxml::xml_node<>* res_node, rapidx
   }
 }
 
-std::string test_transactions() {
-  rapidxml::xml_document<> req_doc;
-  rapidxml::xml_node<>* req_node = req_doc.allocate_node(rapidxml::node_element, "transactions");
-  req_doc.append_node(req_node);
-  req_node->append_attribute(req_doc.allocate_attribute("id", "12345"));
-  rapidxml::xml_node<>* order = req_doc.allocate_node(rapidxml::node_element, "order");
-  req_node->append_node(order);
-  order->append_attribute(req_doc.allocate_attribute("sym", "ABC"));
-  order->append_attribute(req_doc.allocate_attribute("amount", "100"));
-  order->append_attribute(req_doc.allocate_attribute("limit", "200"));
-  rapidxml::xml_node<>* query1 = req_doc.allocate_node(rapidxml::node_element, "query");
-  req_node->append_node(query1);
-  query1->append_attribute(req_doc.allocate_attribute("id", "46"));
-  rapidxml::xml_node<>* cancel = req_doc.allocate_node(rapidxml::node_element, "cancel");
-  req_node->append_node(cancel);
-  cancel->append_attribute(req_doc.allocate_attribute("id", "46"));
-  rapidxml::xml_node<>* query2 = req_doc.allocate_node(rapidxml::node_element, "query");
-  req_node->append_node(query2);
-  query2->append_attribute(req_doc.allocate_attribute("id", "46"));
-  std::string req;
-  rapidxml::print(std::back_inserter(req), req_doc, 0);
-  return req;
-}
-
 // Initialize tables.
 void create_table(pqxx::connection* C) {
   std::ifstream ifs;
@@ -634,61 +609,4 @@ pqxx::connection* start_connection() {
 
 void end_connection(pqxx::connection* C) {
   C->disconnect();
-}
-
-int main() {
-  pqxx::connection *C = start_connection();
-  
-  // Testcases for creating account.
-  /*  
-  std::string req = "<create><account id=\"1\" balance=\"2000\"/></create>";
-  std::string res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><account id=\"1\" balance=\"2000\"/></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><account balance=\"2000\"/></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><account id=\"2\"/></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-  */
-  
-  // Testcases for creating position.
-  /*
-  std::string req = "<create><account id=\"1\" balance=\"2000\"/><symbol sym=\"SYM\"><account id=\"1\">20</account></symbol></create>";
-  std::string res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><account id=\"2\" balance=\"2000\"/><account id=\"3\" balance=\"2000\"/></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-  
-  req = "<create><symbol><account id=\"1\">20</account></symbol></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><symbol sym=\"SYM\"><account>20</account><account id=\"2\">20</account></symbol></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><symbol sym=\"SYM\"><account id=\"1\"></account></symbol></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><symbol sym=\"SYM\"></symbol></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-
-  req = "<create><symbol sym=\"SYM\"><account id=\"2\">30</account></symbol><symbol sym=\"TEST\"><account id=\"2\">30</account></symbol></create>";
-  res = execute_request(req, C);
-  std::cout << res;
-  */
-  
-  end_connection(C);
-  return 0;
 }
