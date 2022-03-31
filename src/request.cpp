@@ -587,6 +587,35 @@ void create_table(pqxx::connection* C) {
   }
 }
 
+// Insert records to table ACCOUNT and SYMBOL.
+void initialize_table(pqxx::connection* C) {
+  for (int i = 1; i <= 100; i ++) {
+    std::stringstream sql;
+    sql << "INSERT INTO ACCOUNT (ACCOUNT_ID, BALANCE) VALUES(" << i << ", " << "2000);";
+    pqxx::work W(*C);
+    try {
+      W.exec(sql);
+      W.commit();
+    } catch (const pqxx::pqxx_exception & e) {
+      W.abort();
+      std::cerr << "Database Error in <initialization>: " << e.base().what() << std::endl;
+    }
+  }
+  
+  for (int i = 1; i <= 100; i ++) {
+    std::stringstream sql;
+    sql << "INSERT INTO SYMBOL (NAME) VALUES(\'" << "SYM" << i << "\');";
+    pqxx::work W(*C);
+    try {
+      W.exec(sql);
+      W.commit();
+    } catch (const pqxx::pqxx_exception & e) {
+      W.abort();
+      std::cerr << "Database Error in <initialization>: " << e.base().what() << std::endl;
+    }
+  }
+}
+
 pqxx::connection* start_connection() {
   pqxx::connection *C;
   try{

@@ -26,5 +26,6 @@ void order_match(int order_id, pqxx::connection* C);
 void copy_attr(rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, rapidxml::xml_node<>* res_node);
 void print_order_status(pqxx::result* R2, rapidxml::xml_node<>* res_node, rapidxml::xml_document<>* res_doc); 
 void create_table(pqxx::connection* C);
+void initialize_table(pqxx::connection* C);
 
 #endif
