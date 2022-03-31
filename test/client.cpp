@@ -1,31 +1,26 @@
-#include "test_funcs.h"
-#include <thread>
-#include <vector>
-#include <time.h>
-#include <atomic>
+#include "client.h"
 
-extern std::atomic<bool> stop_signal;
+void Client::start() {
+    memset(&host_info, 0, sizeof(host_info));
 
-int main(int argc, char ** argv) {
-  int thread_num = 10;
-  std::vector<std::thread> threads;
-  for (int i = 0 ; i < thread_num; ++i) {
-    threads.push_back(std::thread(send_transactions));
-  }
-  
-  // start timing
-  struct timespec start, end;
-  clock_gettime(CLOCK_REALTIME, &start);
-  while (1) {
-    clock_gettime(CLOCK_REALTIME, &end);
-    uint64_t diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
-    if (diff > 10) {
-      stop_signal = true;
-      for (auto &t:threads){
-        t.join();
-      }
-      return 0;
+    host_info.ai_family   = AF_UNSPEC;
+    host_info.ai_socktype = SOCK_STREAM;
+
+    status = getaddrinfo(hostname, port, &host_info, &host_info_list);
+    if (status != 0) {
+        std::cout << "ERROR cannot get address info for host (" << hostname  << ", " << port << ")\n";
+        exit(EXIT_FAILURE);
     }
-  }
-}
 
+    socket_fd = socket(host_info_list->ai_family, host_info_list->ai_socktype, host_info_list->ai_protocol);
+    if (socket_fd == -1) {
+        std::cout << "ERROR cannot create socket (" << hostname  << ", " << port << ")\n";
+        exit(EXIT_FAILURE);
+    }
+
+    status = connect(socket_fd, host_info_list->ai_addr, host_info_list->ai_addrlen);
+    if (status == -1) {
+        std::cout << "ERROR cannot connect to socket (" << hostname  << ", " << port << ")\n";
+        exit(EXIT_FAILURE);
+    }
+}

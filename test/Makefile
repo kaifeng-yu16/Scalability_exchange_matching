@@ -1,6 +1,6 @@
 CC=g++
 
-TARGETS=client
+TARGETS=test_scalability
 CFLAGS=-std=gnu++17 -pedantic -Wall -Werror -ggdb3 -pthread
 EXTRAFLAGS=-lpqxx -lpq
 
@@ -9,11 +9,14 @@ all: $(TARGETS)
 clean:
 	rm -f $(TARGETS) *.o
 
-client: client.o test_funcs.o
+test_scalability: test_scalability.o test_funcs.o client.o
 	g++ -o $@ $^ -lpthread $(EXTRAFLAGS)
 
-client.o: client.cpp  
+test_scalability.o: test_scalability.cpp
 	g++ $(CFLAGS) -c  $< 
 
 test_funcs.o: test_funcs.cpp test_funcs.h 
+	g++ $(CFLAGS) -c  $< 
+
+client.o: client.cpp client.h
 	g++ $(CFLAGS) -c  $< 

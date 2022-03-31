@@ -597,12 +597,14 @@ pqxx::connection* start_connection() {
       std::cerr << "Can't open database" << std::endl;
       return nullptr;
     }
+  } catch (const pqxx::pqxx_exception & e) {
+    std::cerr << e.base().what() << std::endl;
+    return nullptr;
   } catch (const std::exception &e){
     std::cerr << e.what() << std::endl;
     return nullptr;
   }
 
-  create_table(C);
   return C;
 }
 
