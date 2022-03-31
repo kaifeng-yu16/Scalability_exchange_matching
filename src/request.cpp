@@ -23,8 +23,195 @@ std::string execute_request(std::string req, pqxx::connection* C) {
   }
 }
 
+
+void copy_attr(rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, rapidxml::xml_node<>* res_node) {
+  for (rapidxml::xml_attribute<> *attr = node->first_attribute(); attr != 0; attr=attr->next_attribute()) {
+    char *name = res_doc->allocate_string(attr->name()); 
+    char *value = res_doc->allocate_string(attr->value()); 
+    res_node->append_attribute(res_doc->allocate_attribute(name, value));
+  }
+}
+
+// Add new account.
+rapidxml::xml_node<>* add_new_account(rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, pqxx::connection* C) {
+  // Generate results.
+  rapidxml::xml_node<>* res_node = nullptr;
+
+  //Get attribute id.
+  rapidxml::xml_attribute<> *attr = node->first_attribute("id");
+  if (attr == 0) {
+    std::cerr << "Create_Account: do not have id\n";
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have id attr");
+    copy_attr(node, res_doc, res_node);
+    return res_node;
+  }
+  std::string id(attr->value());
+
+  //Get attribute balance.
+  attr = node->first_attribute("balance");
+  if (attr == 0) {
+    std::cerr << "Create_Account: do not have balance\n";
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have balance attr");
+    copy_attr(node, res_doc, res_node);
+    return res_node;
+  }
+  std::string balance(attr->value());
+
+  // Insert new record into table.
+  pqxx::work W(*C);
+  try {
+    std::stringstream ss;
+    ss << "INSERT INTO ACCOUNT (ACCOUNT_ID, BALANCE) VALUES(" << id << ", " << balance << ");";
+    pqxx::result R = W.exec(ss.str());
+    W.commit();
+    res_node = res_doc->allocate_node(rapidxml::node_element, "created");
+    copy_attr(node, res_doc, res_node);
+  }
+  catch (const pqxx::pqxx_exception & e) {
+    W.abort();
+    std::cerr << "Database Error in <create> <account>: " << e.base().what() << std::endl;
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Account can not be created by database, might have invalid input.");
+    copy_attr(node, res_doc, res_node);
+    return res_node;
+  }
+  return res_node;
+}
+
+// Add new position.
+rapidxml::xml_node<>* add_new_position(std::string sym, rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, pqxx::connection* C) {
+  // Generate results.
+  rapidxml::xml_node<>* res_node = nullptr;
+
+  // Get attribute id.
+  rapidxml::xml_attribute<> *attr = node->first_attribute("id");
+  if (attr == 0) {
+    std::cerr << "Create_Symbol: do not have id\n";
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have id attr");
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    res_node->append_attribute(res_doc->allocate_attribute("id", ""));
+    return res_node;
+  }
+  std::string id(attr->value());
+
+  // Get value num.
+  std::string num(node->value());
+  
+  if (num.size() == 0) {
+    std::cerr << "Create_Symbol: do not have num\n";
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have num");
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    copy_attr(node, res_doc, res_node);
+    return res_node;
+  }      
+
+  // If sym is not stored in table SYMBOL, insert it into the table.
+  pqxx::nontransaction N(*C);
+  std::stringstream ss;
+  ss << "SELECT * FROM SYMBOL WHERE NAME=" << N.quote(sym) << ";";
+  try {
+    pqxx::result R(N.exec(ss.str()));
+    N.commit();
+    pqxx::work W(*C);
+    if (R.begin() == R.end()) {
+      try {
+        ss.str("");
+        ss << "INSERT INTO SYMBOL (NAME) VALUES(" << W.quote(sym) << ");";
+        pqxx::result R = W.exec(ss.str());
+        W.commit();
+      } catch (const pqxx::pqxx_exception & e) {
+        W.abort();
+        std::cerr << "Database Error in <create> <symbol>: " << e.base().what() << std::endl;
+        res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Symbol can not be created by database, might have invalid input.");
+        res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+        copy_attr(node, res_doc, res_node);
+        return res_node;
+      }
+    }
+  } catch (const pqxx::pqxx_exception & e) {
+    N.abort();
+  }
+
+  // Insert new record into table.
+  pqxx::work W(*C);
+  try {
+    ss.str("");
+    ss << "INSERT INTO POSITION (ACCOUNT_ID, SYMBOL, AMOUNT) VALUES(" << id << ", " << W.quote(sym) << ", "<< num << ");";
+    pqxx::result R = W.exec(ss.str());
+    W.commit();
+    res_node = res_doc->allocate_node(rapidxml::node_element, "created");
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    copy_attr(node, res_doc, res_node);
+  }
+  catch (const pqxx::pqxx_exception & e) {
+    W.abort();
+    std::cerr << "Database Error in <create> <symbol>: " << e.base().what() << std::endl;
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Position can not be created by database, might have invalid input.");
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    copy_attr(node, res_doc, res_node);
+    return res_node;
+  }
+  return res_node;
+}
+
+// Create request.
 std::string create_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
-  return "";
+  // Generate response.
+  rapidxml::xml_document<> res_doc;
+  rapidxml::xml_node<>* res_root = res_doc.allocate_node(rapidxml::node_element, "results");
+  res_doc.append_node(res_root);
+
+  rapidxml::xml_node<>* node = root->first_node(); 
+  if (node == 0) {
+    std::cerr << "Create: do not have any children node\n";
+  }
+
+  // Travle through all the child nodes.
+  rapidxml::xml_node<>* res_child_node;
+  while (node != 0) {
+    // <account>
+    if (std::strcmp(node->name(), "account") == 0) {
+      res_child_node = add_new_account(node, &res_doc, C);
+      res_root->append_node(res_child_node);
+    } 
+    // <symbol>
+    else if (std::strcmp(node->name(), "symbol") == 0) {
+      // Get attribute sym.
+      rapidxml::xml_attribute<> *attr = node->first_attribute("sym");
+
+      // Generate error message for every <account> under <symbol>.
+      if (attr == 0) {
+        std::cerr << "Create_Symbol: do not have sym\n";
+        for (rapidxml::xml_node<>* it = node->first_node("account"); it != 0; it = it->next_sibling("account")) {
+          res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Do not have sym attr");
+          res_child_node->append_attribute(res_doc.allocate_attribute("sym", ""));
+          copy_attr(it, &res_doc, res_child_node);
+          res_root->append_node(res_child_node);
+        }
+      }
+      else {
+        std::string sym(attr->value());
+
+        // <account>
+        rapidxml::xml_node<>* child_node = node->first_node("account");
+        if (child_node == 0) {
+          std::cerr << "Create_Symbol: do not have any child node\n";
+          res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Do not have any child node");
+          res_child_node->append_attribute(res_doc.allocate_attribute("sym", sym.c_str()));
+          res_root->append_node(res_child_node);
+        }
+        while (child_node != 0) {
+          res_child_node = add_new_position(sym, child_node, &res_doc, C);
+          res_root->append_node(res_child_node);
+          child_node = child_node->next_sibling("account");
+        }
+      }
+    }
+    node = node->next_sibling();
+  }
+
+  std::string res;
+  rapidxml::print(std::back_inserter(res), res_doc, 0);
+  return res;
 }
 
 std::string transaction_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
@@ -84,14 +271,6 @@ std::string transaction_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
   std::string res;
   rapidxml::print(std::back_inserter(res), res_doc, 0);
   return res;
-}
-
-void copy_attr(rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, rapidxml::xml_node<>* res_node) {
-  for (rapidxml::xml_attribute<> *attr = node->first_attribute(); attr != 0; attr=attr->next_attribute()) {
-    char *name = res_doc->allocate_string(attr->name()); 
-    char *value = res_doc->allocate_string(attr->value()); 
-    res_node->append_attribute(res_doc->allocate_attribute(name, value));
-  }
 }
 
 rapidxml::xml_node<>* add_new_order(std::string user_id, rapidxml::xml_node<>* node, rapidxml::xml_document<>* res_doc, pqxx::connection* C) {
@@ -391,20 +570,7 @@ void print_order_status(pqxx::result* R2, rapidxml::xml_node<>* res_node, rapidx
   }
 }
 
-int main() {
-  pqxx::connection *C;
-  try{
-    C = new pqxx::connection("dbname=STOCK_MARKET user=postgres password=passw0rd");
-    if (C->is_open()) {
-      std::cout << "Opened database successfully: " << C->dbname() << std::endl;
-    } else {
-      std::cerr << "Can't open database" << std::endl;
-      return 1;
-    }
-  } catch (const std::exception &e){
-    std::cerr << e.what() << std::endl;
-    return 1;
-  }
+std::string test_transactions() {
   rapidxml::xml_document<> req_doc;
   rapidxml::xml_node<>* req_node = req_doc.allocate_node(rapidxml::node_element, "transactions");
   req_doc.append_node(req_node);
@@ -424,8 +590,106 @@ int main() {
   req_node->append_node(query2);
   query2->append_attribute(req_doc.allocate_attribute("id", "46"));
   std::string req;
-  rapidxml::print(std::back_inserter(req), req_doc, 0); 
+  rapidxml::print(std::back_inserter(req), req_doc, 0);
+  return req;
+}
+
+// Initialize tables.
+void create_table(pqxx::connection* C) {
+  std::ifstream ifs;
+  ifs.open("table.sql", std::ifstream::in);
+  std::string line, sql;
+  while (getline(ifs, line)) {
+    sql += line;
+  }
+  ifs.close();
+
+  pqxx::work W(*C);
+  try {
+    W.exec(sql);
+    W.commit();
+  } catch (const pqxx::pqxx_exception & e) {
+    W.abort();
+    std::cerr << "Database Error in <initialization>: " << e.base().what() << std::endl;
+  }
+}
+
+pqxx::connection* start_connection() {
+  pqxx::connection *C;
+        try{
+                C = new pqxx::connection("dbname=STOCK_MARKET user=postgres password=passw0rd");
+                if (C->is_open()) {
+                        std::cout << "Opened database successfully: " << C->dbname() << std::endl;
+                } else {
+                        std::cerr << "Can't open database" << std::endl;
+                        return nullptr;
+                }
+        } catch (const std::exception &e){
+                std::cerr << e.what() << std::endl;
+                return nullptr;
+        }
+
+        create_table(C);
+  return C;
+}
+
+void end_connection(pqxx::connection* C) {
+  C->disconnect();
+}
+
+int main() {
+  pqxx::connection *C = start_connection();
+  
+  // Testcases for creating account.
+  /*  
+  std::string req = "<create><account id=\"1\" balance=\"2000\"/></create>";
   std::string res = execute_request(req, C);
   std::cout << res;
+
+  req = "<create><account id=\"1\" balance=\"2000\"/></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+
+  req = "<create><account balance=\"2000\"/></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+
+  req = "<create><account id=\"2\"/></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+  */
+  
+  // Testcases for creating position.
+  /*
+  std::string req = "<create><account id=\"1\" balance=\"2000\"/><symbol sym=\"SYM\"><account id=\"1\">20</account></symbol></create>";
+  std::string res = execute_request(req, C);
+  std::cout << res;
+
+  req = "<create><account id=\"2\" balance=\"2000\"/><account id=\"3\" balance=\"2000\"/></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+  
+  req = "<create><symbol><account id=\"1\">20</account></symbol></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+
+  req = "<create><symbol sym=\"SYM\"><account>20</account><account id=\"2\">20</account></symbol></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+
+  req = "<create><symbol sym=\"SYM\"><account id=\"1\"></account></symbol></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+
+  req = "<create><symbol sym=\"SYM\"></symbol></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+
+  req = "<create><symbol sym=\"SYM\"><account id=\"2\">30</account></symbol><symbol sym=\"TEST\"><account id=\"2\">30</account></symbol></create>";
+  res = execute_request(req, C);
+  std::cout << res;
+  */
+  
+  end_connection(C);
   return 0;
 }
