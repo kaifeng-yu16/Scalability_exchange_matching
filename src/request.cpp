@@ -36,49 +36,50 @@ std::string transaction_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
     std::cerr << "Transaction: do not have user id\n";
     for (rapidxml::xml_node<>* node = root->first_node("order"); node != 0; node=node->next_sibling("order")) {
       rapidxml::xml_node<>* res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Do not have user_id attr");
-      root->append_node(res_child_node);
-      copy_attr(node, &res_doc, res_child_node);
-    }
-  }
-  std::string user_id(attr->value());
-  pqxx::nontransaction N(*C);
-  std::stringstream ss;
-  ss << "SELECT * FROM ACCOUNT WHERE ACCOUNT_ID=" << N.quote(user_id) << ";";
-  try {
-    pqxx::result R(N.exec(ss.str()));
-    N.commit();
-    if (R.begin() == R.end()) {
-      throw pqxx::argument_error("invalid user id");
-    }
-  }
-  catch (const pqxx::pqxx_exception &e) {
-    std::cerr << "Transaction: invalid user id\n";
-    for (rapidxml::xml_node<>* node = root->first_node("order"); node != 0; node=node->next_sibling("order")) {
-      rapidxml::xml_node<>* res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Invalid user_id attr");
-      root->append_node(res_child_node);
-      copy_attr(node, &res_doc, res_child_node);
-    }
-  }
-  rapidxml::xml_node<>* node = root->first_node(); 
-  if (node == 0) {
-    std::cerr << "Transaction: do not have any children node\n";
-  }
-  rapidxml::xml_node<>* res_child_node;
-  while (node != 0) {
-    if (std::strcmp(node->name(), "order") == 0) {
-      res_child_node = add_new_order(user_id, node, &res_doc, C);
-    } else if (std::strcmp(node->name(), "cancel") == 0) {
-      res_child_node = cancel_order(user_id, node, &res_doc, C);
-    } else if (std::strcmp(node->name(), "query") == 0) {
-      res_child_node = query_order(user_id, node, &res_doc, C);
-    } else {
-      std::cout << "Transaction: have invalid child node[" << node->name() << "]\n";
-      res_child_node = nullptr;
-    }
-    if (res_child_node != nullptr) {
       res_root->append_node(res_child_node);
-    } 
-    node = node->next_sibling();
+      copy_attr(node, &res_doc, res_child_node);
+    }
+  } else {
+    std::string user_id(attr->value());
+    pqxx::nontransaction N(*C);
+    std::stringstream ss;
+    ss << "SELECT * FROM ACCOUNT WHERE ACCOUNT_ID=" << N.quote(user_id) << ";";
+    try {
+      pqxx::result R(N.exec(ss.str()));
+      N.commit();
+      if (R.begin() == R.end()) {
+        throw pqxx::argument_error("invalid user id");
+      }
+    }
+    catch (const pqxx::pqxx_exception &e) {
+      std::cerr << "Transaction: invalid user id\n";
+      for (rapidxml::xml_node<>* node = root->first_node("order"); node != 0; node=node->next_sibling("order")) {
+        rapidxml::xml_node<>* res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Invalid user_id attr");
+        root->append_node(res_child_node);
+        copy_attr(node, &res_doc, res_child_node);
+      }
+    }
+    rapidxml::xml_node<>* node = root->first_node(); 
+    if (node == 0) {
+      std::cerr << "Transaction: do not have any children node\n";
+    }
+    rapidxml::xml_node<>* res_child_node;
+    while (node != 0) {
+      if (std::strcmp(node->name(), "order") == 0) {
+        res_child_node = add_new_order(user_id, node, &res_doc, C);
+      } else if (std::strcmp(node->name(), "cancel") == 0) {
+        res_child_node = cancel_order(user_id, node, &res_doc, C);
+      } else if (std::strcmp(node->name(), "query") == 0) {
+        res_child_node = query_order(user_id, node, &res_doc, C);
+      } else {
+        std::cout << "Transaction: have invalid child node[" << node->name() << "]\n";
+        res_child_node = nullptr;
+      }
+      if (res_child_node != nullptr) {
+        res_root->append_node(res_child_node);
+      } 
+      node = node->next_sibling();
+    }
   }
   std::string res;
   rapidxml::print(std::back_inserter(res), res_doc, 0);
