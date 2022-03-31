@@ -41,7 +41,7 @@ rapidxml::xml_node<>* add_new_account(rapidxml::xml_node<>* node, rapidxml::xml_
   if (attr == 0) {
     std::cerr << "Create_Account: do not have id\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have id attr");
-    copy_attr(node, res_doc, res_node);
+    res_node->append_attribute(res_doc->allocate_attribute("id", ""));
     return res_node;
   }
   std::string id(attr->value());
@@ -51,7 +51,8 @@ rapidxml::xml_node<>* add_new_account(rapidxml::xml_node<>* node, rapidxml::xml_
   if (attr == 0) {
     std::cerr << "Create_Account: do not have balance\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have balance attr");
-    copy_attr(node, res_doc, res_node);
+    char * id_ptr = res_doc->allocate_string(id.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("id", id_ptr));
     return res_node;
   }
   std::string balance(attr->value());
@@ -60,17 +61,19 @@ rapidxml::xml_node<>* add_new_account(rapidxml::xml_node<>* node, rapidxml::xml_
   pqxx::work W(*C);
   try {
     std::stringstream ss;
-    ss << "INSERT INTO ACCOUNT (ACCOUNT_ID, BALANCE) VALUES(" << id << ", " << balance << ");";
+    ss << "INSERT INTO ACCOUNT (ACCOUNT_ID, BALANCE) VALUES(" << W.quote(id) << ", " << W.quote(balance) << ");";
     pqxx::result R = W.exec(ss.str());
     W.commit();
     res_node = res_doc->allocate_node(rapidxml::node_element, "created");
-    copy_attr(node, res_doc, res_node);
+    char * id_ptr = res_doc->allocate_string(id.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("id", id_ptr));
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
     std::cerr << "Database Error in <create> <account>: " << e.base().what() << std::endl;
-    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Account can not be created by database, might have invalid input.");
-    copy_attr(node, res_doc, res_node);
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Can not create net account, account might already exist OR has invalid account or balance info");
+    char * id_ptr = res_doc->allocate_string(id.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("id", id_ptr));
     return res_node;
   }
   return res_node;
@@ -86,7 +89,8 @@ rapidxml::xml_node<>* add_new_position(std::string sym, rapidxml::xml_node<>* no
   if (attr == 0) {
     std::cerr << "Create_Symbol: do not have id\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have id attr");
-    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    char * sym_ptr = res_doc->allocate_string(sym.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
     res_node->append_attribute(res_doc->allocate_attribute("id", ""));
     return res_node;
   }
@@ -98,54 +102,48 @@ rapidxml::xml_node<>* add_new_position(std::string sym, rapidxml::xml_node<>* no
   if (num.size() == 0) {
     std::cerr << "Create_Symbol: do not have num\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have num");
-    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    char * sym_ptr = res_doc->allocate_string(sym.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
     copy_attr(node, res_doc, res_node);
     return res_node;
-  }      
-
-  // If sym is not stored in table SYMBOL, insert it into the table.
-  pqxx::nontransaction N(*C);
-  std::stringstream ss;
-  ss << "SELECT * FROM SYMBOL WHERE NAME=" << N.quote(sym) << ";";
+  }
+  int num_int; 
   try {
-    pqxx::result R(N.exec(ss.str()));
-    N.commit();
-    pqxx::work W(*C);
-    if (R.begin() == R.end()) {
-      try {
-        ss.str("");
-        ss << "INSERT INTO SYMBOL (NAME) VALUES(" << W.quote(sym) << ");";
-        pqxx::result R = W.exec(ss.str());
-        W.commit();
-      } catch (const pqxx::pqxx_exception & e) {
-        W.abort();
-        std::cerr << "Database Error in <create> <symbol>: " << e.base().what() << std::endl;
-        res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Symbol can not be created by database, might have invalid input.");
-        res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
-        copy_attr(node, res_doc, res_node);
-        return res_node;
-      }
+    num_int = stoi(num);
+    if (num_int <= 0 ) {
+      throw std::exception();
     }
-  } catch (const pqxx::pqxx_exception & e) {
-    N.abort();
+  }
+  catch (const std::exception &e){
+    std::cerr << "Do not have a valid NUM when creating a position.\n"; 
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have a valid NUM when creating a position.");
+    char * sym_ptr = res_doc->allocate_string(sym.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
+    copy_attr(node, res_doc, res_node);
+    return res_node;
   }
 
+  std::stringstream ss;
   // Insert new record into table.
   pqxx::work W(*C);
   try {
-    ss.str("");
-    ss << "INSERT INTO POSITION (ACCOUNT_ID, SYMBOL, AMOUNT) VALUES(" << id << ", " << W.quote(sym) << ", "<< num << ");";
+    // If sym is not stored in table SYMBOL, insert it into the table.
+    ss << "INSERT INTO SYMBOL VALUES (" << W.quote(sym) << ") ON CONFLICT(NAME) DO NOTHING; ";
+    ss << "INSERT INTO POSITION VALUES(" << W.quote(id) << ", " << W.quote(sym) << ", 0) ON CONFLICT(ACCOUNT_ID, SYMBOL) DO NOTHING;";
+    ss << "UPDATE POSITION SET AMOUNT=AMOUNT+'" << num_int << "' WHERE ACCOUNT_ID=" << W.quote(id) << " AND SYMBOL=" << W.quote(sym) << ";";
     pqxx::result R = W.exec(ss.str());
     W.commit();
     res_node = res_doc->allocate_node(rapidxml::node_element, "created");
-    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    char * sym_ptr = res_doc->allocate_string(sym.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
     copy_attr(node, res_doc, res_node);
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
     std::cerr << "Database Error in <create> <symbol>: " << e.base().what() << std::endl;
-    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Position can not be created by database, might have invalid input.");
-    res_node->append_attribute(res_doc->allocate_attribute("sym", sym.c_str()));
+    res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Position can not be created by database, might have invalid input id.");
+    char * sym_ptr = res_doc->allocate_string(sym.c_str());
+    res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
     copy_attr(node, res_doc, res_node);
     return res_node;
   }

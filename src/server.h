@@ -1,3 +1,7 @@
+#ifndef SERVER__H
+#define SERVER__H
+
+#include <vector>
 #include "socket.h"
 #include "request.h"
 
@@ -64,3 +68,5 @@ ClientInfo * Server::accept_connection(){
     client_info->ip_addr = inet_ntoa(((struct sockaddr_in *)&socket_addr)->sin_addr);
     return client_info;
 }
+
+#endif
