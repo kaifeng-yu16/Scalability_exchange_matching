@@ -1,7 +1,9 @@
 #include "test_funcs.h"
 
-std::atomic<bool> stop_signal = false;
-static std::mutex mtx;
+//std::atomic<bool> stop_signal = false;
+//static std::mutex mtx;
+//int count=0;
+
 
 // Insert records to table ACCOUNT and SYMBOL.
 void initialize_data(const char * host_name, size_t account_num, size_t sym_num, size_t order_num) {
@@ -77,9 +79,10 @@ void initialize_data(const char * host_name, size_t account_num, size_t sym_num,
 
 void send_create(const char * host_name, size_t account_num, size_t sym_num) {
   srand ((unsigned int)time(NULL));
-  int count = 0;
+  //int count = 0;
 
-  while (!stop_signal && account_num > 0) {
+  //while (!stop_signal && account_num > 0) {
+  while (account_num > 0) {
     // Create new account.
     Client client(host_name, "12345");
     std::stringstream ss;
@@ -92,9 +95,11 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
     int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
     if (len == 0 || xml_len == 0) {
       close(client.socket_fd);
-      if (len != 0) {
-        ++count;
-      }
+      /*if (len != 0) {
+        mtx.lock();
+	      ++count;
+	      mtx.unlock();
+      }*/
       continue;
     }
     std::vector<char> buf(xml_len + 1, 0);
@@ -103,7 +108,9 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
       std::cout << buf[i];
     }
     close(client.socket_fd);
+    /*mtx.lock();
     ++ count;
+    mtx.unlock();*/
     if (buf_size == 0) {
       continue;
     }
@@ -127,9 +134,11 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
       int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
       if (len == 0 || xml_len == 0) {
         close(client.socket_fd);
-        if (len != 0) {
-          ++count;
-        }
+        /*if (len != 0) {
+          mtx.lock();
+	        ++count;
+	        mtx.unlock();
+        }*/
         continue;
       }
       std::vector<char> buf(xml_len + 1, 0);
@@ -138,7 +147,11 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
       for (size_t i = 0; i < buf.size(); i ++) {
       	std::cout << buf[i];
       }
+      /*
+      mtx.lock();
       ++ count;
+      mtx.unlock();
+      */
       if (buf_size == 0) {
         continue;
       }
@@ -159,9 +172,9 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
   int amount_low = -100;
   int amount_high = 100;
 
-  int count = 0;
+  //int count = 0;
 
-  while (!stop_signal) {
+  while (1) {
    // std::cout << stop_signal << std::endl;
     try {
       Client client(host_name, "12345");
@@ -180,16 +193,23 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
       if (len == 0 || xml_len == 0) {
         close(client.socket_fd);
+        /*
         if (len != 0) {
-          ++count;
-        }
+          mtx.lock();
+	        ++count;
+	        mtx.unlock();
+        }*/
         continue;
       }
-	    std::vector<char> buf(xml_len + 1, 0);
+      std::vector<char> buf(xml_len + 1, 0);
       int buf_size = client.recieve(&buf);
       close(client.socket_fd);
       //std::cout << buf;
+      /*
+      mtx.lock();
       ++ count;
+      mtx.unlock();
+      */
       if (buf_size <= 0 || (query_rate == 0 && cancel_rate == 0)) {
         continue;
       }
@@ -231,15 +251,20 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
         if (len == 0 || xml_len == 0) {
           close(client.socket_fd);
-          if (len != 0) {
-            ++count;
-          }
+          /*if (len != 0) {
+            mtx.lock();
+	          ++count;
+	          mtx.unlock();
+          }*/
         } else {
-	        std::vector<char> buf(xml_len + 1, 0);
+	  std::vector<char> buf(xml_len + 1, 0);
           client.recieve(&buf);
           close(client.socket_fd);
           //std::cout << buf;
-          ++ count;
+          /*
+          mtx.lock();
+	        ++ count;
+	        mtx.unlock();*/
         }
       }
       // 50% chance to query order
@@ -256,15 +281,21 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
         if (len == 0 || xml_len == 0) {
           close(client.socket_fd);
+          /*
           if (len != 0) {
-            ++count;
-          }
+            mtx.lock();
+	          ++count;
+	          mtx.unlock();
+          }*/
         } else {
 	        std::vector<char> buf(xml_len + 1, 0);
           client.recieve(&buf);
           close(client.socket_fd);
           //std::cout << buf;
-          ++ count;
+          /*
+          mtx.lock();
+	        ++ count;
+	        mtx.unlock();*/
         }
       }
     }
@@ -273,9 +304,9 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       continue;
     } 
   }
-  mtx.lock();
+  /*mtx.lock();
   std::cout << "Transaction requests: " << count << std::endl;
-  mtx.unlock();
+  mtx.unlock();*/
   return;
 }
 
