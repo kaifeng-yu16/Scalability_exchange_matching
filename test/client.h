@@ -8,7 +8,7 @@ class Client : public Socket {
 public:
     Client(const char * _hostname, const char * _port) : Socket(_hostname, _port) { start(); }
     void start();
-    int recv(std::vector<char> * buf);
+    int recieve(std::vector<char> * buf);
 };
 
 #endif

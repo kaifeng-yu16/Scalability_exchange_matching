@@ -1,9 +1,11 @@
 #include "test_funcs.h"
+#include "../src/request.h"
 #include <thread>
 #include <vector>
 #include <time.h>
 #include <atomic>
 #include <cstdlib>
+#include <pqxx/pqxx>
 
 extern std::atomic<bool> stop_signal;
 
@@ -14,7 +16,7 @@ int main(int argc, char ** argv) {
     return -1;
   }
   const char * host_name = argv[1];
-  unsigned long thread_num, exec_time;
+  /*unsigned long thread_num, exec_time;
   try {
     thread_num = std::strtoul(argv[2], nullptr, 10);
     exec_time = std::strtoul(argv[3], nullptr, 10);
@@ -23,11 +25,18 @@ int main(int argc, char ** argv) {
     std::cout << "Invalid input\n";
     std::cout << "./client host_name thread_num exec_time\n";
     return -1;
-  }
+  }*/
   // parameters
-  size_t account_num = 1000;
-  size_t sym_num = 100;
+  size_t account_num = 10;
+  size_t sym_num = 2;
+  size_t order_num = 2000;
+  //size_t account_num = 1000;
+  //size_t sym_num = 100;
+  //size_t order_num = 2000;
   // pre created a bunch of account and sym and order
+  
+  initialize_data(host_name, account_num, sym_num, order_num);
+  /*
   std::vector<std::thread> threads;
   for (size_t i = 0 ; i < thread_num; ++i) {
     threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num));
@@ -47,5 +56,6 @@ int main(int argc, char ** argv) {
       return 0;
     }
   }
+*/
 }
 

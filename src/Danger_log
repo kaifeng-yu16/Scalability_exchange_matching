@@ -9,3 +9,7 @@ A few detailed assumptions other than those in the requirement:
   6. server can not match buy/sell from the same account
   7. If the <order> tag do not have enough attrs or has invalid attrs, it will add an <error> tag in results to indicate this error. 
   8. If the <cancel> tag or <query> tag has do not id attributes, they will print a error message and will not print any results.
+
+
+Problems that we solved:
+  1. When we have multipul testing thread sending requests to our server, our server will report "fatal: sorry, too many clients already" and exit. This happend because our server spawns too many threads and have too many connections with database and runs out of connection resources. We solve this by retring every time we failed to get a new connection.

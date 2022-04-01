@@ -3,6 +3,47 @@
 std::atomic<bool> stop_signal = false;
 static std::mutex mtx;
 
+// Insert records to table ACCOUNT and SYMBOL.
+void initialize_data(const char * host_name, size_t account_num, size_t sym_num, size_t order_num) {
+  for (size_t i = 0; i < account_num; ++i) {
+    Client client(host_name, "12345");
+    std::stringstream ss;
+    ss << "<create><account id=\"" << std::to_string(i) << "\" balance=\"100000\"/></create>";
+    std::string req = ss.str();
+    std::cout << "request:\n" << req << "\n";
+    unsigned size = req.size();
+    send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
+    send(client.socket_fd, req.c_str(), req.size(), 0);
+    unsigned xml_len = 0;
+    char buf[10000]{0};
+    recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
+    recv(client.socket_fd, buf, sizeof(buf), MSG_WAITALL); 
+    std::cout << buf << std::endl;
+    close(client.socket_fd);
+  }
+  
+  for (size_t i = 0; i < sym_num; ++i) {
+    Client client(host_name, "12345");
+    std::stringstream ss;
+    ss << "<create><symbol sym=\"" << std::to_string(i) << "\">";
+    for (size_t j = 0; j < account_num; ++j) {
+      ss << "<account id=\"" << std::to_string(j) << "\">1000</account>";
+    }
+    ss << "</symbol></create>";
+    std::string req = ss.str();
+    std::cout << "request:\n" << req << "\n";
+    unsigned size = req.size();
+    send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
+    send(client.socket_fd, req.c_str(), req.size(), 0);
+    unsigned xml_len = 0;
+    char buf[10000]{0};
+    recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
+    recv(client.socket_fd, buf, sizeof(buf), MSG_WAITALL); 
+    std::cout << buf << std::endl;
+    close(client.socket_fd);
+  }
+}
+
 // assume each account has 100000 balance, and has 1000 position for each sym
 // account_num and sym_num should not exceed 32767, since the return value rand() is only guarenteed to be at least 32767
 void send_transactions(const char * host_name, size_t account_num, size_t sym_num) {
@@ -36,7 +77,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       continue;
     }
 	  std::vector<char> buf(xml_len + 1, 0);
-    int buf_size = client.recv(&buf);
+    int buf_size = client.recieve(&buf);
     close(client.socket_fd);
     //std::cout << buf;
     ++ count;
@@ -51,7 +92,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       std::cerr << "Wrong results from server!\n";
       continue;
     }
-    rapidxmk::xml_node<>* node = root.first_node("opened");
+    rapidxml::xml_node<>* node = root->first_node("opened");
     if (node == 0) {
       // order not secessfuly opend
       continue;
@@ -66,7 +107,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
     if (rand() % 10 < 1) {
       Client client(host_name, "12345");
       ss.str("");
-      ss << "<transactions id=\"" << id << "\"><cancel id=\"" << order_id << "\"></transactions>";
+      ss << "<transactions id=\"" << id << "\"><cancel id=\"" << order_id << "\"/></transactions>";
       std::string cancel_req = ss.str();
       unsigned cancel_size = cancel_req.size();
       send(client.socket_fd, (char*)&cancel_size, sizeof(unsigned),0);
@@ -80,7 +121,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         }
       } else {
 	      std::vector<char> buf(xml_len + 1, 0);
-        int buf_size = client.recv(&buf);
+        client.recieve(&buf);
         close(client.socket_fd);
         //std::cout << buf;
         ++ count;
@@ -90,7 +131,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
     if (rand() % 2 < 1) {
       Client client(host_name, "12345");
       ss.str("");
-      ss << "<transactions id=\"" << id << "\"><query id=\"" << order_id << "\"></transactions>";
+      ss << "<transactions id=\"" << id << "\"><query id=\"" << order_id << "\"/></transactions>";
       std::string query_req = ss.str();
       unsigned query_size = query_req.size();
       send(client.socket_fd, (char*)&query_size, sizeof(unsigned),0);
@@ -104,7 +145,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         }
       } else {
 	      std::vector<char> buf(xml_len + 1, 0);
-        int buf_size = client.recv(&buf);
+        client.recieve(&buf);
         close(client.socket_fd);
         //std::cout << buf;
         ++ count;

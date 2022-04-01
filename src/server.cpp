@@ -39,11 +39,10 @@ void * process_request(void * _info) {
       C = start_connection();
     }
 		std::string resp = execute_request(req, C);
-    unsigned size = resp.size();
-    send(info->client_info->fd, (char*)&size, sizeof(unsigned),0);
-    send(info->client_info->fd, resp.c_str(), resp.size(), 0);
-  
     C->disconnect();
+    unsigned size = resp.size();
+    send(info->client_info->fd, (char*)&size, sizeof(unsigned), 0);
+    send(info->client_info->fd, resp.c_str(), resp.size(), 0); 
 	}
   close(info->client_info->fd);
   delete info;

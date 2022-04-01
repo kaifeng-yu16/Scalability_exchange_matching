@@ -25,9 +25,10 @@ void Client::start() {
     }
 }
 
-int Client::recv(std::vector<char> * buf) {
+int Client::recieve(std::vector<char> * buf) {
     int buf_size = buf->size() - 1;
     char * buf_ptr = buf->data();
+    int len = 0;
     do {
       len = recv(socket_fd, buf_ptr, sizeof(char) * buf_size, 0);
       buf_size -= len;
