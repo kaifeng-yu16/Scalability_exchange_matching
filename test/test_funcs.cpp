@@ -84,49 +84,11 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
   //while (!stop_signal && account_num > 0) {
   while (account_num > 0) {
     // Create new account.
-    Client client(host_name, "12345");
-    std::stringstream ss;
-    ss << "<create><account id=\"" << std::to_string(++account_num) << "\" balance=\"100000\"/></create>";
-    std::string req = ss.str();
-    unsigned size = req.size();
-    send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
-    send(client.socket_fd, req.c_str(), req.size(), 0);
-    unsigned xml_len = 0;
-    int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
-    if (len == 0 || xml_len == 0) {
-      close(client.socket_fd);
-      /*if (len != 0) {
-        mtx.lock();
-	      ++count;
-	      mtx.unlock();
-      }*/
-      continue;
-    }
-    std::vector<char> buf(xml_len + 1, 0);
-    int buf_size = client.recieve(&buf);
-    for (size_t i = 0; i < buf.size(); i ++) {
-      std::cout << buf[i];
-    }
-    close(client.socket_fd);
-    /*mtx.lock();
-    ++ count;
-    mtx.unlock();*/
-    if (buf_size == 0) {
-      continue;
-    }
-
-    // 50% create position for newly created account.
-    if (rand() % 2 < 1) {
+    try {
       Client client(host_name, "12345");
       std::stringstream ss;
-
-      int r = rand();
-      std::cout << "rand: " << r << std::endl; 
-      ss << "<create><symbol sym=\"" << std::to_string(r % sym_num + 1) << "\">";
-      ss << "<account id=\"" << std::to_string(account_num) << "\">1000</account>";
-      ss << "</symbol></create>";
+      ss << "<create><account id=\"" << std::to_string(++account_num) << "\" balance=\"100000\"/></create>";
       std::string req = ss.str();
-      std::cout << "request: " << req << std::endl;
       unsigned size = req.size();
       send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
       send(client.socket_fd, req.c_str(), req.size(), 0);
@@ -143,24 +105,70 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
       }
       std::vector<char> buf(xml_len + 1, 0);
       int buf_size = client.recieve(&buf);
+      /*for (size_t i = 0; i < buf.size(); i ++) {
+        std::cout << buf[i];
+      }*/
+      buf.resize(0);
       close(client.socket_fd);
-      for (size_t i = 0; i < buf.size(); i ++) {
-      	std::cout << buf[i];
-      }
-      /*
-      mtx.lock();
+      /*mtx.lock();
       ++ count;
-      mtx.unlock();
-      */
+      mtx.unlock();*/
       if (buf_size == 0) {
         continue;
       }
+
+      // 50% create position for newly created account.
+      if (rand() % 2 < 1) {
+        Client client(host_name, "12345");
+        std::stringstream ss;
+
+        int r = rand();
+        //std::cout << "rand: " << r << std::endl; 
+        ss << "<create><symbol sym=\"" << std::to_string(r % sym_num + 1) << "\">";
+        ss << "<account id=\"" << std::to_string(account_num) << "\">1000</account>";
+        ss << "</symbol></create>";
+        std::string req = ss.str();
+        //std::cout << "request: " << req << std::endl;
+        unsigned size = req.size();
+        send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
+        send(client.socket_fd, req.c_str(), req.size(), 0);
+        unsigned xml_len = 0;
+        int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
+        if (len == 0 || xml_len == 0) {
+          close(client.socket_fd);
+          /*if (len != 0) {
+          mtx.lock();
+	        ++count;
+	        mtx.unlock();
+        }*/
+          continue;
+        }
+        std::vector<char> buf(xml_len + 1, 0);
+        int buf_size = client.recieve(&buf);
+        close(client.socket_fd);
+        /*for (size_t i = 0; i < buf.size(); i ++) {
+      	  std::cout << buf[i];
+        }*/
+        /*
+        mtx.lock();
+        ++ count;
+        mtx.unlock();
+        */
+        if (buf_size == 0) {
+          continue;
+        }
+      }
     }
+    catch (std::exception &e) {
+      //std::cerr << "Might have a proxy connection issue " << std::endl;
+      continue;
+    } 
   }
-  /*
-  mtx.lock();
-  std::cout << "Create requests: " << count << std::endl;
-  mtx.unlock();*/
+    
+    /*
+    mtx.lock();
+    std::cout << "Create requests: " << count << std::endl;
+    mtx.unlock();*/
   return;
 }
 
