@@ -14,11 +14,11 @@ std::string execute_request(std::string req, pqxx::connection* C) {
     return response;
   }
   catch (const pqxx::pqxx_exception &e) {
-    std::cerr << "Database Error: " << e.base().what() << std::endl;
+    //std::cerr << "Database Error: " << e.base().what() << std::endl;
     return "";
   }
   catch (std::exception &e) {
-    std::cerr << "Parser Error: " << e.what() << std::endl;
+    //std::cerr << "Parser Error: " << e.what() << std::endl;
     return "";
   }
 }
@@ -39,7 +39,7 @@ rapidxml::xml_node<>* add_new_account(rapidxml::xml_node<>* node, rapidxml::xml_
   //Get attribute id.
   rapidxml::xml_attribute<> *attr = node->first_attribute("id");
   if (attr == 0) {
-    std::cerr << "Create_Account: do not have id\n";
+    //std::cerr << "Create_Account: do not have id\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have id attr");
     res_node->append_attribute(res_doc->allocate_attribute("id", ""));
     return res_node;
@@ -49,7 +49,7 @@ rapidxml::xml_node<>* add_new_account(rapidxml::xml_node<>* node, rapidxml::xml_
   //Get attribute balance.
   attr = node->first_attribute("balance");
   if (attr == 0) {
-    std::cerr << "Create_Account: do not have balance\n";
+    //std::cerr << "Create_Account: do not have balance\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have balance attr");
     char * id_ptr = res_doc->allocate_string(id.c_str());
     res_node->append_attribute(res_doc->allocate_attribute("id", id_ptr));
@@ -70,7 +70,7 @@ rapidxml::xml_node<>* add_new_account(rapidxml::xml_node<>* node, rapidxml::xml_
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
-    std::cerr << "Database Error in <create> <account>: " << e.base().what() << std::endl;
+    //std::cerr << "Database Error in <create> <account>: " << e.base().what() << std::endl;
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Can not create net account, account might already exist OR has invalid account or balance info");
     char * id_ptr = res_doc->allocate_string(id.c_str());
     res_node->append_attribute(res_doc->allocate_attribute("id", id_ptr));
@@ -87,7 +87,7 @@ rapidxml::xml_node<>* add_new_position(std::string sym, rapidxml::xml_node<>* no
   // Get attribute id.
   rapidxml::xml_attribute<> *attr = node->first_attribute("id");
   if (attr == 0) {
-    std::cerr << "Create_Symbol: do not have id\n";
+    //std::cerr << "Create_Symbol: do not have id\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have id attr");
     char * sym_ptr = res_doc->allocate_string(sym.c_str());
     res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
@@ -100,7 +100,7 @@ rapidxml::xml_node<>* add_new_position(std::string sym, rapidxml::xml_node<>* no
   std::string num(node->value());
   
   if (num.size() == 0) {
-    std::cerr << "Create_Symbol: do not have num\n";
+    //std::cerr << "Create_Symbol: do not have num\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have num");
     char * sym_ptr = res_doc->allocate_string(sym.c_str());
     res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
@@ -115,7 +115,7 @@ rapidxml::xml_node<>* add_new_position(std::string sym, rapidxml::xml_node<>* no
     }
   }
   catch (const std::exception &e){
-    std::cerr << "Do not have a valid NUM when creating a position.\n"; 
+    //std::cerr << "Do not have a valid NUM when creating a position.\n"; 
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have a valid NUM when creating a position.");
     char * sym_ptr = res_doc->allocate_string(sym.c_str());
     res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
@@ -140,7 +140,7 @@ rapidxml::xml_node<>* add_new_position(std::string sym, rapidxml::xml_node<>* no
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
-    std::cerr << "Database Error in <create> <symbol>: " << e.base().what() << std::endl;
+    //std::cerr << "Database Error in <create> <symbol>: " << e.base().what() << std::endl;
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Position can not be created by database, might have invalid input id.");
     char * sym_ptr = res_doc->allocate_string(sym.c_str());
     res_node->append_attribute(res_doc->allocate_attribute("sym", sym_ptr));
@@ -159,7 +159,7 @@ std::string create_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
 
   rapidxml::xml_node<>* node = root->first_node(); 
   if (node == 0) {
-    std::cerr << "Create: do not have any children node\n";
+    //std::cerr << "Create: do not have any children node\n";
   }
 
   // Travle through all the child nodes.
@@ -177,7 +177,7 @@ std::string create_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
 
       // Generate error message for every <account> under <symbol>.
       if (attr == 0) {
-        std::cerr << "Create_Symbol: do not have sym\n";
+        //std::cerr << "Create_Symbol: do not have sym\n";
         for (rapidxml::xml_node<>* it = node->first_node("account"); it != 0; it = it->next_sibling("account")) {
           res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Do not have sym attr");
           res_child_node->append_attribute(res_doc.allocate_attribute("sym", ""));
@@ -191,7 +191,7 @@ std::string create_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
         // <account>
         rapidxml::xml_node<>* child_node = node->first_node("account");
         if (child_node == 0) {
-          std::cerr << "Create_Symbol: do not have any child node\n";
+          //std::cerr << "Create_Symbol: do not have any child node\n";
           res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Do not have any child node");
           res_child_node->append_attribute(res_doc.allocate_attribute("sym", sym.c_str()));
           res_root->append_node(res_child_node);
@@ -217,7 +217,7 @@ std::string transaction_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
   res_doc.append_node(res_root);
   rapidxml::xml_attribute<> *attr = root->first_attribute("id");
   if (attr == 0) {
-    std::cerr << "Transaction: do not have user id\n";
+    //std::cerr << "Transaction: do not have user id\n";
     for (rapidxml::xml_node<>* node = root->first_node("order"); node != 0; node=node->next_sibling("order")) {
       rapidxml::xml_node<>* res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Do not have user_id attr");
       res_root->append_node(res_child_node);
@@ -236,7 +236,7 @@ std::string transaction_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
       }
     }
     catch (const pqxx::pqxx_exception &e) {
-      std::cerr << "Transaction: invalid user id\n";
+      //std::cerr << "Transaction: invalid user id\n";
       for (rapidxml::xml_node<>* node = root->first_node("order"); node != 0; node=node->next_sibling("order")) {
         rapidxml::xml_node<>* res_child_node = res_doc.allocate_node(rapidxml::node_element, "error", "Invalid user_id attr");
         root->append_node(res_child_node);
@@ -245,7 +245,7 @@ std::string transaction_req(rapidxml::xml_node<>* root, pqxx::connection* C) {
     }
     rapidxml::xml_node<>* node = root->first_node(); 
     if (node == 0) {
-      std::cerr << "Transaction: do not have any children node\n";
+      //std::cerr << "Transaction: do not have any children node\n";
     }
     rapidxml::xml_node<>* res_child_node;
     while (node != 0) {
@@ -274,7 +274,7 @@ rapidxml::xml_node<>* add_new_order(std::string user_id, rapidxml::xml_node<>* n
   rapidxml::xml_node<>* res_node = nullptr;
   rapidxml::xml_attribute<> *attr = node->first_attribute("sym");
   if (attr == 0) {
-    std::cerr << "Transaction_Order: do not have sym\n";
+    //std::cerr << "Transaction_Order: do not have sym\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have sym attr");
     copy_attr(node, res_doc, res_node);
     return res_node;
@@ -282,7 +282,7 @@ rapidxml::xml_node<>* add_new_order(std::string user_id, rapidxml::xml_node<>* n
   std::string sym(attr->value());
   attr = node->first_attribute("amount");
   if (attr == 0) {
-    std::cerr << "Transaction_Order: do not have amount\n";
+    //std::cerr << "Transaction_Order: do not have amount\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have amount attr");
     copy_attr(node, res_doc, res_node);
     return res_node;
@@ -290,7 +290,7 @@ rapidxml::xml_node<>* add_new_order(std::string user_id, rapidxml::xml_node<>* n
   std::string amount(attr->value());
   attr = node->first_attribute("limit");
   if (attr == 0) {
-    std::cerr << "Transaction_Order: do not have limit\n";
+    //std::cerr << "Transaction_Order: do not have limit\n";
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Do not have limit attr");
     copy_attr(node, res_doc, res_node);
     return res_node;
@@ -341,13 +341,13 @@ rapidxml::xml_node<>* add_new_order(std::string user_id, rapidxml::xml_node<>* n
       return res_node;
     }
     catch (const pqxx::pqxx_exception & e) {
-      std::cerr << "Match order error: " << e.base().what() << std::endl;
+      //std::cerr << "Match order error: " << e.base().what() << std::endl;
       return res_node;
     }
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
-    std::cerr << "Database Error in <transactions> <order>: " << e.base().what() << std::endl;
+    //std::cerr << "Database Error in <transactions> <order>: " << e.base().what() << std::endl;
     res_node = res_doc->allocate_node(rapidxml::node_element, "error", "Order can not execute by database, might have invalid input.");
     copy_attr(node, res_doc, res_node);
     return res_node;
@@ -461,7 +461,7 @@ rapidxml::xml_node<>* cancel_order(std::string user_id, rapidxml::xml_node<>* no
   res_node = res_doc->allocate_node(rapidxml::node_element, "canceled");
   rapidxml::xml_attribute<> *attr = node->first_attribute("id");
   if (attr == 0) {
-    std::cerr << "Transaction_Cancel: do not have order id\n";
+    //std::cerr << "Transaction_Cancel: do not have order id\n";
     return nullptr;
   }
   std::string id(attr->value());
@@ -493,12 +493,12 @@ rapidxml::xml_node<>* cancel_order(std::string user_id, rapidxml::xml_node<>* no
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
-    std::cerr << "Database Error in <transactions> <cancel>: " << e.base().what() << std::endl;
+    //std::cerr << "Database Error in <transactions> <cancel>: " << e.base().what() << std::endl;
     return nullptr;
   }
   catch (const std::exception &e){
     W.abort();
-    std::cerr << "Error in <transactions> <cancel>: " << e.what() << std::endl;
+    //std::cerr << "Error in <transactions> <cancel>: " << e.what() << std::endl;
     return nullptr;
   }
   print_order_status(&R2, res_node, res_doc);
@@ -510,7 +510,7 @@ rapidxml::xml_node<>* query_order(std::string user_id, rapidxml::xml_node<>* nod
   res_node = res_doc->allocate_node(rapidxml::node_element, "status");
   rapidxml::xml_attribute<> *attr = node->first_attribute("id");
   if (attr == 0) {
-    std::cerr << "Transaction_Query: do not have order id\n";
+    //std::cerr << "Transaction_Query: do not have order id\n";
     return nullptr;
   }
   std::string id(attr->value()); 
@@ -526,12 +526,12 @@ rapidxml::xml_node<>* query_order(std::string user_id, rapidxml::xml_node<>* nod
   }
   catch (const pqxx::pqxx_exception & e) {
     W.abort();
-    std::cerr << "Database Error in <transactions> <query>: " << e.base().what() << std::endl;
+    //std::cerr << "Database Error in <transactions> <query>: " << e.base().what() << std::endl;
     return nullptr;
   }
   catch (const std::exception &e){
     W.abort();
-    std::cerr << "Error in <transactions> <query>: " << e.what() << std::endl;
+    //std::cerr << "Error in <transactions> <query>: " << e.what() << std::endl;
     return nullptr;
   }
   print_order_status(&R2, res_node, res_doc);
@@ -570,7 +570,7 @@ void print_order_status(pqxx::result* R2, rapidxml::xml_node<>* res_node, rapidx
       char * time_ch = res_doc->allocate_string(std::to_string(time).c_str());
       res_child_node->append_attribute(res_doc->allocate_attribute("time", time_ch));
     } else {
-      std::cerr << "Invalid status: " << status << std::endl;
+      //std::cerr << "Invalid status: " << status << std::endl;
     }
   }
 }
@@ -591,7 +591,7 @@ void create_table(pqxx::connection* C) {
     W.commit();
   } catch (const pqxx::pqxx_exception & e) {
     W.abort();
-    std::cerr << "Database Error in <initialization>: " << e.base().what() << std::endl;
+    //std::cerr << "Database Error in <initialization>: " << e.base().what() << std::endl;
   }
 }
 
