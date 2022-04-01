@@ -32,7 +32,7 @@ int main(int argc, char ** argv) {
   
   std::vector<std::thread> threads;
   for (size_t i = 0 ; i < thread_num; ++i) {
-    threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num, 0, 0));
+    threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num, 2, 10)); 
   }
   
   //std::thread t(send_create, host_name, account_num, sym_num);

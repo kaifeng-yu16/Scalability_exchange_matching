@@ -178,18 +178,20 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
   while (1) {
    // std::cout << stop_signal << std::endl;
     try {
-      Client client(host_name, "12345");
       std::stringstream ss;
       std::string id = std::to_string(rand() % account_num);
-      std::string sym = std::to_string(rand() % sym_num);
-      std::string lim = std::to_string(rand() % (limit_high - limit_low) + limit_low);
-      std::string amt = std::to_string(rand() % (amount_high - amount_low) + amount_low);
-      ss << "<transactions id=\"" << id << "\"><order sym=\"" << sym << "\" amount=\"" << amt << "\" limit=\"" << lim << "\"/> </transactions>";
+      //std::string sym = std::to_string(rand() % sym_num);
+      //std::string lim = std::to_string(rand() % (limit_high - limit_low) + limit_low);
+      //std::string amt = std::to_string(rand() % (amount_high - amount_low) + amount_low);
+      ss << "<transactions id=\"" << id << "\"><order sym=\"" << std::to_string(rand() % sym_num) << "\" amount=\"" << std::to_string(rand() % (amount_high - amount_low) + amount_low) << "\" limit=\"" << std::to_string(rand() % (limit_high - limit_low) + limit_low) << "\"/> </transactions>";
 	    std::string req = ss.str();
+      ss.str("");
       // std::cout << "request:\n" << req << "\n";
       unsigned size = req.size();
+      Client client(host_name, "12345");
       send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
       send(client.socket_fd, req.c_str(), req.size(), 0);
+      req.resize(0);
       unsigned xml_len = 0;
       int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
       if (len == 0 || xml_len == 0) {
@@ -211,13 +213,17 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       ++ count;
       mtx.unlock();
       */
-      if (buf_size <= 0 || (query_rate == 0 && cancel_rate == 0)) {
+      //if (buf_size <= 0 || (query_rate == 0 && cancel_rate == 0)) {
+      //  continue;
+      //}
+      if (buf_size <= 0) {
         continue;
       }
       // std::cout << "reponse: \nxml_len= " << xml_len << std::endl<< "buffer size = " << buf_size << std::endl<< buf.data() << std::endl;
       rapidxml::xml_document<> doc;  
       try {
         doc.parse<0>(buf.data()); 
+        buf.resize(0);
       }
       catch (const std::exception &e) {
         continue;
@@ -237,30 +243,32 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         //std::cerr << "Wrong results from server: Opened order do not have an id.\n"; 
         continue;
       }
+      doc.clear();
       std::string order_id(attr->value());
       // 10% chance to cancel order
       if (cancel_rate != 0 && rand() % cancel_rate < 1) {
-        Client client(host_name, "12345");
-        ss.str("");
+        Client client_cancel(host_name, "12345");
         ss << "<transactions id=\"" << id << "\"><cancel id=\"" << order_id << "\"/></transactions>";
+        ss.str("");
         std::string cancel_req = ss.str();
         //std::cout << "cancel_request:\n" << cancel_req << "\n";
         unsigned cancel_size = cancel_req.size();
-        send(client.socket_fd, (char*)&cancel_size, sizeof(unsigned),0);
-        send(client.socket_fd, cancel_req.c_str(), cancel_req.size(), 0);
+        send(client_cancel.socket_fd, (char*)&cancel_size, sizeof(unsigned),0);
+        send(client_cancel.socket_fd, cancel_req.c_str(), cancel_req.size(), 0);
+        cancel_req.resize(0);
         unsigned xml_len = 0;
-        int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
+        int len = recv(client_cancel.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
         if (len == 0 || xml_len == 0) {
-          close(client.socket_fd);
+          close(client_cancel.socket_fd);
           /*if (len != 0) {
             mtx.lock();
 	          ++count;
 	          mtx.unlock();
           }*/
         } else {
-	  std::vector<char> buf(xml_len + 1, 0);
-          client.recieve(&buf);
-          close(client.socket_fd);
+	        std::vector<char> buf(xml_len + 1, 0);
+          client_cancel.recieve(&buf);
+          //close(client_cancel.socket_fd);
           //std::cout << buf;
           /*
           mtx.lock();
@@ -269,19 +277,19 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         }
       }
       // 50% chance to query order
-      if (query_rate != 0 && rand() % query_rate < 1) {
-        Client client(host_name, "12345");
+      else if (query_rate != 0 && rand() % query_rate < 1) {
+        Client client_query(host_name, "12345");
         ss.str("");
         ss << "<transactions id=\"" << id << "\"><query id=\"" << order_id << "\"/></transactions>";
         std::string query_req = ss.str();
         //std::cout << "query_request:\n" << query_req << "\n";
         unsigned query_size = query_req.size();
-        send(client.socket_fd, (char*)&query_size, sizeof(unsigned),0);
-        send(client.socket_fd, query_req.c_str(), query_req.size(), 0);
+        send(client_query.socket_fd, (char*)&query_size, sizeof(unsigned),0);
+        send(client_query.socket_fd, query_req.c_str(), query_req.size(), 0);
         unsigned xml_len = 0;
-        int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
+        int len = recv(client_query.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
         if (len == 0 || xml_len == 0) {
-          close(client.socket_fd);
+          close(client_query.socket_fd);
           /*
           if (len != 0) {
             mtx.lock();
@@ -290,8 +298,8 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
           }*/
         } else {
 	        std::vector<char> buf(xml_len + 1, 0);
-          client.recieve(&buf);
-          close(client.socket_fd);
+          client_query.recieve(&buf);
+          //close(client_query.socket_fd);
           //std::cout << buf;
           /*
           mtx.lock();
