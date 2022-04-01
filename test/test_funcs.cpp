@@ -221,12 +221,12 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       ++ count;
       mtx.unlock();
       */
-      //if (buf_size <= 0 || (query_rate == 0 && cancel_rate == 0)) {
-      //  continue;
-      //}
-      if (buf_size <= 0) {
+      if (buf_size <= 0 || (query_rate == 0 && cancel_rate == 0)) {
         continue;
       }
+      //if (buf_size <= 0) {
+      //  continue;
+      //}
       // std::cout << "reponse: \nxml_len= " << xml_len << std::endl<< "buffer size = " << buf_size << std::endl<< buf.data() << std::endl;
       rapidxml::xml_document<> doc;  
       try {
@@ -285,7 +285,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         }
       }
       // 50% chance to query order
-      else if (query_rate != 0 && rand() % query_rate < 1) {
+      if (query_rate != 0 && rand() % query_rate < 1) {
         Client client_query(host_name, "12345");
         ss.str("");
         ss << "<transactions id=\"" << id << "\"><query id=\"" << order_id << "\"/></transactions>";
