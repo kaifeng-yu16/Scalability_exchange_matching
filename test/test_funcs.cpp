@@ -157,9 +157,10 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
       }
     }
   }
+  /*
   mtx.lock();
   std::cout << "Create requests: " << count << std::endl;
-  mtx.unlock();
+  mtx.unlock();*/
   return;
 }
 
