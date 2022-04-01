@@ -42,14 +42,12 @@ int main(int argc, char ** argv) {
   initialize_data(host_name, account_num, sym_num, order_num);
   std::cout << "Finished initializing data.\n";
   
-  /*
->>>>>>> 7115f22c57d3b5cef363a1b21d64ad5c8e011ba9
   std::vector<std::thread> threads;
   for (size_t i = 0 ; i < thread_num; ++i) {
     threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num,2, 10));
   }
-  */
-  std::thread t(send_create, host_name, account_num, sym_num);
+  
+  //std::thread t(send_create, host_name, account_num, sym_num);
 
   // start timing
   struct timespec start, end;
@@ -59,12 +57,9 @@ int main(int argc, char ** argv) {
     uint64_t diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
     if (diff > exec_time) {
       stop_signal = true;
-      /* 
-      for (auto &t:threads){
+      for (auto &t:threads) {
         t.join();
       }
-      */
-      t.join();
       return 0;
     }
   }
