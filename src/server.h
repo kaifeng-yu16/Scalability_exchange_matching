@@ -4,6 +4,7 @@
 #include <vector>
 #include "socket.h"
 #include "request.h"
+#include <mutex>
 
 class ClientInfo {
 public:

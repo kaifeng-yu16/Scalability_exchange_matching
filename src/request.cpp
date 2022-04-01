@@ -386,7 +386,7 @@ void order_match(int order_id, pqxx::connection* C) {
       time1 = R.begin()[5].as<std::string>();
       order_id1 = order_id;
       ss.str("");
-      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id1 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT>0 AND PRICE>='" << price1 << "' AND CREATE_AT<to_timestamp(" << W.quote(time1) << ") ORDER BY PRICE DESC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
+      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id1 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT>0 AND PRICE>='" << price1 << "' AND ORDER_ID<'" << order_id1 << "' ORDER BY PRICE DESC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
       pqxx::result R2 = W.exec(ss.str());
       if (R2.begin() == R2.end()) {
         W.abort();
@@ -407,7 +407,7 @@ void order_match(int order_id, pqxx::connection* C) {
       time2 = R.begin()[5].as<std::string>();
       order_id2 = order_id;
       ss.str("");
-      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id2 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT<0 AND PRICE<='" << price2 << "' AND CREATE_AT<to_timestamp(" << W.quote(time2) << ") ORDER BY PRICE ASC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
+      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id2 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT<0 AND PRICE<='" << price2 << "' AND ORDER_ID<'" << order_id2 << "' ORDER BY PRICE ASC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
       pqxx::result R2 = W.exec(ss.str());
       if (R2.begin() == R2.end()) {
         W.abort();
