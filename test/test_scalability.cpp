@@ -31,10 +31,10 @@ int main(int argc, char ** argv) {
   size_t sym_num = 50;
   
   std::vector<std::thread> threads;
-  for (size_t i = 0 ; i < thread_num; ++i) {
+  for (size_t i = 0 ; i < thread_num - 1; ++i) {
     threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num, 2, 10)); 
   }
-  
+  std::thread t_send(send_create, host_name, account_num, sym_num); 
   //std::thread t(send_create, host_name, account_num, sym_num);
 
   // start timing
@@ -58,6 +58,7 @@ int main(int argc, char ** argv) {
   for (auto &t:threads) {
     t.join();
   }
+  t_send.join();
   return 0;
 
 }
