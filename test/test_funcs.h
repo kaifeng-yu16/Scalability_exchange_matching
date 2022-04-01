@@ -13,6 +13,7 @@
 #include "../lib/rapidxml_ext.hpp"
 
 // generate sufficient data to start
+void send_create(const char * host_name, size_t account_num, size_t sym_num);
 void send_transactions(const char * host_name, size_t account_num, size_t sym_num);
 void initialize_data(const char * host_name, size_t account_num, size_t sym_num, size_t order_num);
 
