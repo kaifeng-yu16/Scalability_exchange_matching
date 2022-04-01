@@ -16,14 +16,9 @@ int main(int argc, char ** argv) {
     return -1;
   }
   const char * host_name = argv[1];
-<<<<<<< HEAD
   unsigned long thread_num, exec_time;
-=======
-  // unsigned long thread_num, exec_time;
-  unsigned long exec_time;
->>>>>>> 7115f22c57d3b5cef363a1b21d64ad5c8e011ba9
   try {
-    // thread_num = std::strtoul(argv[2], nullptr, 10);
+    thread_num = std::strtoul(argv[2], nullptr, 10);
     exec_time = std::strtoul(argv[3], nullptr, 10);
   }
   catch (const std::exception &e) {
@@ -45,9 +40,7 @@ int main(int argc, char ** argv) {
   // pre created a bunch of account and sym and order
   
   initialize_data(host_name, account_num, sym_num, order_num);
-<<<<<<< HEAD
   std::cout << "Finished initializing data.\n";
-=======
   
   /*
 >>>>>>> 7115f22c57d3b5cef363a1b21d64ad5c8e011ba9
