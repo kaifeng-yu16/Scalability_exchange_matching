@@ -41,9 +41,11 @@ void * process_request(void * _info) {
 		std::string resp = execute_request(req, C);
     C->disconnect();
     unsigned size = resp.size();
-    send(info->client_info->fd, (char*)&size, sizeof(unsigned), 0);
-    send(info->client_info->fd, resp.c_str(), resp.size(), 0); 
-	}
+    send(info->client_info->fd, (char*)&size, sizeof(unsigned), MSG_NOSIGNAL);
+    if (size != 0) {
+      send(info->client_info->fd, resp.c_str(), resp.size(), MSG_NOSIGNAL); 
+	  }
+  }
   close(info->client_info->fd);
   delete info;
 	return nullptr;

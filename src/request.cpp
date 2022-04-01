@@ -386,7 +386,7 @@ void order_match(int order_id, pqxx::connection* C) {
       time1 = R.begin()[5].as<std::string>();
       order_id1 = order_id;
       ss.str("");
-      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id1 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT>0 AND PRICE>='" << price1 << "' ORDER BY PRICE DESC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
+      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id1 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT>0 AND PRICE>='" << price1 << "' AND CREATE_AT<to_timestamp(" << W.quote(time1) << ") ORDER BY PRICE DESC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
       pqxx::result R2 = W.exec(ss.str());
       if (R2.begin() == R2.end()) {
         W.abort();
@@ -407,7 +407,7 @@ void order_match(int order_id, pqxx::connection* C) {
       time2 = R.begin()[5].as<std::string>();
       order_id2 = order_id;
       ss.str("");
-      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id2 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT<0 AND PRICE<='" << price2 << "' ORDER BY PRICE ASC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
+      ss << "SELECT ID, ORDER_ID, AMOUNT, PRICE::numeric, EXTRACT(EPOCH FROM CREATE_AT), ACCOUNT_ID FROM SYM_ORDER WHERE ACCOUNT_ID!=" << account_id2 << "AND STATUS='open' AND SYMBOL="<< W.quote(symbol) << " AND AMOUNT<0 AND PRICE<='" << price2 << "' AND CREATE_AT<to_timestamp(" << W.quote(time2) << ") ORDER BY PRICE ASC, CREATE_AT ASC LIMIT 1 FOR UPDATE;";
       pqxx::result R2 = W.exec(ss.str());
       if (R2.begin() == R2.end()) {
         W.abort();
@@ -429,7 +429,15 @@ void order_match(int order_id, pqxx::connection* C) {
     ss << "INSERT INTO POSITION VALUES(" << account_id2 << ", " << W.quote(symbol) << ", 0) ON CONFLICT(ACCOUNT_ID, SYMBOL) DO NOTHING;";
     ss << "UPDATE POSITION SET AMOUNT=AMOUNT+'" << amount << "' WHERE ACCOUNT_ID=" << account_id2 << " AND SYMBOL=" << W.quote(symbol) << ";";
     if (price < price2) {
+      if (account_id1 < account_id2) {
+        ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << price * amount << "' WHERE ACCOUNT_ID=" << account_id1 << ";";
+      }
       ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << (price2 - price) * amount << "' WHERE ACCOUNT_ID=" << account_id2 << ";";
+      if (account_id1 >= account_id2) {
+        ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << price * amount << "' WHERE ACCOUNT_ID=" << account_id1 << ";";
+      }
+    } else {
+      ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << price * amount << "' WHERE ACCOUNT_ID=" << account_id1 << ";";
     }
     ss << "UPDATE SYM_ORDER SET STATUS='executed', AMOUNT=" << amount << ", PRICE=" << price << ", CREATE_AT=now() WHERE ID=" << id2 << ";";
     if (amount2 > amount) { //need to split order
@@ -438,7 +446,7 @@ void order_match(int order_id, pqxx::connection* C) {
     W.exec(ss.str());
     // for seller: add money; change order status; possiblely split order
     ss.str("");
-    ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << price * amount << "' WHERE ACCOUNT_ID=" << account_id1 << ";";
+    // ss << "UPDATE ACCOUNT SET BALANCE=BALANCE+'" << price * amount << "' WHERE ACCOUNT_ID=" << account_id1 << ";";
     ss << "UPDATE SYM_ORDER SET STATUS='executed', AMOUNT=" << -amount << ", PRICE=" << price << ", CREATE_AT=now() WHERE ID=" << id1 << ";";
     if (amount1 > amount) { // need to split order
       ss << "INSERT INTO SYM_ORDER(ORDER_ID, ACCOUNT_ID, STATUS, SYMBOL, AMOUNT, PRICE, CREATE_AT) VALUES (" << order_id1 << ", " << account_id1 << ", 'open', " << W.quote(symbol) << ", " << amount - amount1 << ", " << price1 << ", to_timestamp(" << time1 << "));";
@@ -592,7 +600,7 @@ pqxx::connection* start_connection() {
   try{
     C = new pqxx::connection("dbname=STOCK_MARKET user=postgres password=passw0rd");
     if (C->is_open()) {
-      std::cout << "Opened database successfully: " << C->dbname() << std::endl;
+      //std::cout << "Opened database successfully: " << C->dbname() << std::endl;
     } else {
       std::cerr << "Can't open database" << std::endl;
       return nullptr;

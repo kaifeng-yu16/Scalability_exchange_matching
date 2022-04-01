@@ -3,6 +3,7 @@
 
 #include "socket.h"
 #include <vector>
+#include <exception>
 
 class Client : public Socket {
 public:

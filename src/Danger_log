@@ -12,4 +12,6 @@ A few detailed assumptions other than those in the requirement:
 
 
 Problems that we solved:
-  1. When we have multipul testing thread sending requests to our server, our server will report "fatal: sorry, too many clients already" and exit. This happend because our server spawns too many threads and have too many connections with database and runs out of connection resources. We solve this by retring every time we failed to get a new connection.
+  1. I notice that if our client program crash, our server will crash as well. This is because that if our client crash before the server can send back it's response, using the send() function in server will cause a SIGPIPE since the socket connection is already closed. I solve this problem by adding flag MSG_NOSIGNAL to send() function to turn off the SIGPIPE behavior and keep our server running forever.
+  2. We had a dead lock problem in database, that is because we use two row locks to lock two rows in database using different orders sometimes. After specify the order of two locks, the problem is solved.
+  3. When we have multipul testing thread sending requests to our server, our server will report "fatal: sorry, too many clients already" and exit. This happend because our server spawns too many threads and have too many connections with database and runs out of connection resources. We solve this by retring every time we failed to get a new connection.
