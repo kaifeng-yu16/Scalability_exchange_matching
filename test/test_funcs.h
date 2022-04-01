@@ -9,7 +9,6 @@
 #include <string>
 #include <ctime>
 #include <cstdlib>
-#include <pqxx/pqxx>
 #include "../lib/rapidxml_ext.hpp"
 
 // generate sufficient data to start

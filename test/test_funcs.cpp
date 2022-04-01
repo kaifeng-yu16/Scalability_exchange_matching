@@ -202,7 +202,7 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         continue;
       }
       rapidxml::xml_node<>* root = doc.first_node();
-      if (root == 0 || std::strcmp(root->name(), "results") != 0) {
+      if (root == 0 || strcmp(root->name(), "results") != 0) {
         //std::cerr << "Wrong results from server!\n" << "buf_size=" << buf_size << " xml_len=" << xml_len << std::endl;
         continue;
       }
