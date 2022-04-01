@@ -2,6 +2,9 @@
 
 #define PORT "12345"
 
+int count = 0;
+static std::mutex mtx;
+
 class Info {
 public:
         ClientInfo* client_info;
@@ -45,23 +48,57 @@ void * process_request(void * _info) {
     if (size != 0) {
       send(info->client_info->fd, resp.c_str(), resp.size(), MSG_NOSIGNAL); 
 	  }
+    mtx.lock();
+    ++count;
+    mtx.unlock();
   }
   close(info->client_info->fd);
   delete info;
 	return nullptr;
 }
 
-int main(){
+int main(int argc, char ** argv){
+    if (argc != 2 && argc != 3) {
+      std::cout << "./server numofrequest\n";
+      return -1;
+    }
+    unsigned num_of_req;
+    try {
+      num_of_req = std::strtoul(argv[1], nullptr, 10);
+    }
+    catch (const std::exception &e) {
+      std::cout << "Invalid input\n";
+      std::cout << "./client host_name thread_num \n";
+      return -1;
+    }
+    bool init_server = true;
+    if (argc == 3) {
+      init_server = false;
+    }
     Server server(PORT);
     pqxx::connection *C = start_connection();
-    create_table(C);
+    if (init_server) {
+      create_table(C);
+    }
     end_connection(C);
+    struct timespec start, end;
+    clock_gettime(CLOCK_REALTIME, &start);
     while (1) {
+      if (num_of_req) {
+        mtx.lock();
+        if (count > num_of_req) {
+          mtx.unlock();
+          break;
+        }
+        mtx.unlock();
+      }
         ClientInfo* client_info = server.accept_connection();
        	Info* info = new Info(client_info, C);	
 	      pthread_t thread;
 	      pthread_create(&thread, NULL, process_request, (void *)info);
     }
-    end_connection(C);
+    clock_gettime(CLOCK_REALTIME, &end);
+    double diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
+    std::cout << "Ececution time: " << diff << " s\n";
     return EXIT_SUCCESS;
 }
