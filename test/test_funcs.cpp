@@ -10,7 +10,7 @@ void initialize_data(const char * host_name, size_t account_num, size_t sym_num,
   for (size_t i = 0; i < account_num; ++i) {
     Client client(host_name, "12345");
     std::stringstream ss;
-    ss << "<create><account id=\"" << std::to_string(i) << "\" balance=\"100000\"/></create>";
+    ss << "<create><account id=\"" << std::to_string(i) << "\" balance=\"1000000000\"/></create>";
     std::string req = ss.str();
     //std::cout << "request:\n" << req << "\n";
     unsigned size = req.size();
@@ -31,7 +31,7 @@ void initialize_data(const char * host_name, size_t account_num, size_t sym_num,
     std::stringstream ss;
     ss << "<create><symbol sym=\"" << std::to_string(i) << "\">";
     for (size_t j = 0; j < account_num; ++j) {
-      ss << "<account id=\"" << std::to_string(j) << "\">1000</account>";
+      ss << "<account id=\"" << std::to_string(j) << "\">1000000</account>";
     }
     ss << "</symbol></create>";
     std::string req = ss.str();
@@ -50,9 +50,9 @@ void initialize_data(const char * host_name, size_t account_num, size_t sym_num,
   }
   srand ((unsigned int)time(NULL));
   int limit_low = 50;
-  int limit_high = 200;
-  int amount_low = -100;
-  int amount_high = 100;
+  int limit_high = 70;
+  int amount_low = -10;
+  int amount_high = 10;
   for (size_t i = 0; i < order_num; ++i) {
     Client client(host_name, "12345");
     std::stringstream ss;

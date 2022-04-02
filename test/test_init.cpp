@@ -20,9 +20,9 @@ int main(int argc, char ** argv) {
   size_t order_num = 100;
   */
   
-  size_t account_num = 50;
-  size_t sym_num = 5;
-  size_t order_num = 100;
+  size_t account_num = 10;
+  size_t sym_num = 3;
+  size_t order_num = 50;
  
   // pre created a bunch of account and sym and order
   
