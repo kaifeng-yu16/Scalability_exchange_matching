@@ -10,7 +10,7 @@ void initialize_data(const char * host_name, size_t account_num, size_t sym_num,
   for (size_t i = 0; i < account_num; ++i) {
     Client client(host_name, "12345");
     std::stringstream ss;
-    ss << "<create><account id=\"" << std::to_string(i) << "\" balance=\"100000\"/></create>";
+    ss << "<create><account id=\"" << std::to_string(i) << "\" balance=\"1000000000\"/></create>";
     std::string req = ss.str();
     //std::cout << "request:\n" << req << "\n";
     unsigned size = req.size();
@@ -31,7 +31,7 @@ void initialize_data(const char * host_name, size_t account_num, size_t sym_num,
     std::stringstream ss;
     ss << "<create><symbol sym=\"" << std::to_string(i) << "\">";
     for (size_t j = 0; j < account_num; ++j) {
-      ss << "<account id=\"" << std::to_string(j) << "\">1000</account>";
+      ss << "<account id=\"" << std::to_string(j) << "\">1000000</account>";
     }
     ss << "</symbol></create>";
     std::string req = ss.str();
@@ -50,9 +50,9 @@ void initialize_data(const char * host_name, size_t account_num, size_t sym_num,
   }
   srand ((unsigned int)time(NULL));
   int limit_low = 50;
-  int limit_high = 200;
-  int amount_low = -100;
-  int amount_high = 100;
+  int limit_high = 70;
+  int amount_low = -10;
+  int amount_high = 10;
   for (size_t i = 0; i < order_num; ++i) {
     Client client(host_name, "12345");
     std::stringstream ss;
@@ -256,13 +256,15 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       // 10% chance to cancel order
       if (cancel_rate != 0 && rand() % cancel_rate < 1) {
         Client client_cancel(host_name, "12345");
-        ss << "<transactions id=\"" << id << "\"><cancel id=\"" << order_id << "\"/></transactions>";
         ss.str("");
+        ss << "<transactions id=\"" << id << "\"><cancel id=\"" << order_id << "\"/></transactions>";
         std::string cancel_req = ss.str();
+        ss.str("");
         //std::cout << "cancel_request:\n" << cancel_req << "\n";
         unsigned cancel_size = cancel_req.size();
         send(client_cancel.socket_fd, (char*)&cancel_size, sizeof(unsigned),0);
         send(client_cancel.socket_fd, cancel_req.c_str(), cancel_req.size(), 0);
+        //std::cout << cancel_req << std::endl;
         cancel_req.resize(0);
         unsigned xml_len = 0;
         int len = recv(client_cancel.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);

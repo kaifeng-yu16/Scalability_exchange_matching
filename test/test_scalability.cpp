@@ -28,13 +28,14 @@ int main(int argc, char ** argv) {
   }
   
   size_t account_num = 50;
-  size_t sym_num = 5;
+  size_t sym_num = 10;
   
   std::vector<std::thread> threads;
   for (size_t i = 0 ; i < thread_num - 1; ++i) {
-    threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num, 0, 0));
-  }
-  std::thread t_send(send_create, host_name, account_num, sym_num); 
+    threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num, 2, 3));
+
+   }
+  //std::thread t_send(send_create, host_name, account_num, sym_num); 
   //std::thread t(send_create, host_name, account_num, sym_num);
 
   // start timing
@@ -58,7 +59,7 @@ int main(int argc, char ** argv) {
   for (auto &t:threads) {
     t.join();
   }
-  t_send.join();
+  //t_send.join();
   return 0;
 
 }
