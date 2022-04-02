@@ -59,6 +59,7 @@ void * process_request(void * _info) {
     struct timespec  end;
     clock_gettime(CLOCK_REALTIME, &end);
     double diff = (1000000000.0 *(end.tv_sec - info->start.tv_sec) + end.tv_nsec - info->start.tv_nsec) / 1e9;
+    //std::cout << diff << " resp: " << resp<< "\n";
     std::cout << diff << "\n";
     /*
     mtx.lock();
