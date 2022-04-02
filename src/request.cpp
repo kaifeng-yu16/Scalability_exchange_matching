@@ -11,15 +11,18 @@ std::string execute_request(std::string req, pqxx::connection* C) {
     } else if (std::strcmp(root->name(), "transactions") == 0) {
       response = transaction_req(root, C);
     }
+    if (response == "") {
+      response = "<results>";
+    }
     return response;
   }
   catch (const pqxx::pqxx_exception &e) {
     //std::cerr << "Database Error: " << e.base().what() << std::endl;
-    return "";
+    return "<results>";
   }
   catch (std::exception &e) {
     //std::cerr << "Parser Error: " << e.what() << std::endl;
-    return "";
+    return "<results>";
   }
 }
 

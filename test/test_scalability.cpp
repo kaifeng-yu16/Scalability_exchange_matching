@@ -27,8 +27,8 @@ int main(int argc, char ** argv) {
     return -1;
   }
   
-  size_t account_num = 1000;
-  size_t sym_num = 50;
+  size_t account_num = 50;
+  size_t sym_num = 5;
   
   std::vector<std::thread> threads;
   for (size_t i = 0 ; i < thread_num - 1; ++i) {
