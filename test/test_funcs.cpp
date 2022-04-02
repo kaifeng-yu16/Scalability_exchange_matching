@@ -177,15 +177,15 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
 void send_transactions(const char * host_name, size_t account_num, size_t sym_num, size_t query_rate, size_t cancel_rate) {
   srand ((unsigned int)time(NULL));
   int limit_low = 50;
-  int limit_high = 200;
-  int amount_low = -100;
-  int amount_high = 100;
+  int limit_high = 70;
+  int amount_low = -10;
+  int amount_high = 10;
 
   //int count = 0;
 
   while (1) {
    // std::cout << stop_signal << std::endl;
-    int batch_size = 1000;
+    int batch_size = 70;
     try {
       std::stringstream ss;
       std::string id = std::to_string(rand() % account_num);

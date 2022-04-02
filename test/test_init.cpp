@@ -21,8 +21,8 @@ int main(int argc, char ** argv) {
   */
   
   size_t account_num = 50;
-  size_t sym_num = 10;
-  size_t order_num = 1000;
+  size_t sym_num = 50;
+  size_t order_num = 10000;
  
   // pre created a bunch of account and sym and order
   

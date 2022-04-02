@@ -28,11 +28,10 @@ int main(int argc, char ** argv) {
   }
   
   size_t account_num = 50;
-  size_t sym_num = 10;
-  
+  size_t sym_num = 50;
   std::vector<std::thread> threads;
   for (size_t i = 0 ; i < thread_num - 1; ++i) {
-    threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num, 2, 3));
+    threads.push_back(std::thread(send_transactions, host_name, account_num, sym_num, 2, 10));
 
    }
   //std::thread t_send(send_create, host_name, account_num, sym_num); 
