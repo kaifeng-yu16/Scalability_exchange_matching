@@ -256,13 +256,15 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       // 10% chance to cancel order
       if (cancel_rate != 0 && rand() % cancel_rate < 1) {
         Client client_cancel(host_name, "12345");
-        ss << "<transactions id=\"" << id << "\"><cancel id=\"" << order_id << "\"/></transactions>";
         ss.str("");
+        ss << "<transactions id=\"" << id << "\"><cancel id=\"" << order_id << "\"/></transactions>";
         std::string cancel_req = ss.str();
+        ss.str("");
         //std::cout << "cancel_request:\n" << cancel_req << "\n";
         unsigned cancel_size = cancel_req.size();
         send(client_cancel.socket_fd, (char*)&cancel_size, sizeof(unsigned),0);
         send(client_cancel.socket_fd, cancel_req.c_str(), cancel_req.size(), 0);
+        //std::cout << cancel_req << std::endl;
         cancel_req.resize(0);
         unsigned xml_len = 0;
         int len = recv(client_cancel.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
