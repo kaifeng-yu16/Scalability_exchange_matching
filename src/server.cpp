@@ -18,7 +18,21 @@ public:
         }
 };
 
+void time_consumer() {
+  int a, b, c;
+  for (int i = 0; i < 10000; ++i) {
+    a = (b + i + i * i) * (c - 1 +i);
+    c = (b + i + i * i) * (a - 1 +i);
+    b = (b*b + c*c - i*i) * (a*a - i*i +i);
+  }
+}
+
 void * process_request(void * _info) {
+  struct timespec  start;
+  for (int i = 0; i < 1000; ++i) {
+    time_consumer();
+  }
+  //clock_gettime(CLOCK_REALTIME, &start);
 	Info* info = (Info *)_info;
   unsigned xml_len = 0;
   int len = recv(info->client_info->fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
@@ -59,6 +73,7 @@ void * process_request(void * _info) {
     struct timespec  end;
     clock_gettime(CLOCK_REALTIME, &end);
     double diff = (1000000000.0 *(end.tv_sec - info->start.tv_sec) + end.tv_nsec - info->start.tv_nsec) / 1e9;
+    //double diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
     //std::cout << diff << " resp: " << resp<< "\n";
     std::cout << diff << "\n";
     /*
@@ -95,33 +110,29 @@ int main(int argc, char ** argv){
       create_table(C);
     }
     end_connection(C);
+    Threadpool thread_pool;
+    Threadpool* pool = thread_pool.get_pool();
     struct timespec start, end;
     clock_gettime(CLOCK_REALTIME, &start);
     while (1) {
-      /*
-      if (num_of_req) {
-        mtx.lock();
-        if (count > num_of_req) {
-          mtx.unlock();
-          break;
-        }
-        mtx.unlock();
-      }*/
         ClientInfo* client_info = server.accept_connection();
        	Info* info = new Info(client_info, C);	
-	      ////
         info->start=start;
-        //clock_gettime(CLOCK_REALTIME, &end);
-        //double diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
-        //std::cout << diff << "\n";
-        ////
-        pthread_t thread;
-        pthread_create(&thread, NULL, process_request, (void *)info);
-        //std::cout << diff << "\n";
-
+        if (!pool->assign_task(bind(process_request, (void*)info))) {
+          close(info->client_info->fd);
+        }
+        //pthread_t thread;
+        //pthread_create(&thread, NULL, process_request, (void *)info);
+        /*
+        clock_gettime(CLOCK_REALTIME, &end);
+        double diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
+        std::cout << "Ececution time: " << diff << " s\n";
+        */
     }
+    /*
     clock_gettime(CLOCK_REALTIME, &end);
     double diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
     std::cout << "Ececution time: " << diff << " s\n";
     return EXIT_SUCCESS;
+    */
 }
