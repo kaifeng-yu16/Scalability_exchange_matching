@@ -10,6 +10,7 @@ public:
         ClientInfo* client_info;
         pqxx::connection* C;
         struct timespec start;
+        bool load_test;
         Info(ClientInfo* _client_info, pqxx::connection* _C): client_info(_client_info), C(_C) {}
         ~Info() {
           if (client_info != nullptr) {
@@ -28,10 +29,10 @@ void time_consumer() {
 }
 
 void * process_request(void * _info) {
-  struct timespec  start;
-  for (int i = 0; i < 1000; ++i) {
+  /*for (int i = 0; i < 1000; ++i) {
     time_consumer();
-  }
+  }*/
+  //struct timespec  start;
   //clock_gettime(CLOCK_REALTIME, &start);
 	Info* info = (Info *)_info;
   unsigned xml_len = 0;
@@ -70,12 +71,14 @@ void * process_request(void * _info) {
     if (size != 0) {
       send(info->client_info->fd, resp.c_str(), resp.size(), MSG_NOSIGNAL); 
     }
-    struct timespec  end;
-    clock_gettime(CLOCK_REALTIME, &end);
-    double diff = (1000000000.0 *(end.tv_sec - info->start.tv_sec) + end.tv_nsec - info->start.tv_nsec) / 1e9;
-    //double diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
-    //std::cout << diff << " resp: " << resp<< "\n";
-    std::cout << diff << "\n";
+    if (info->load_test) {
+      struct timespec  end;
+      clock_gettime(CLOCK_REALTIME, &end);
+      double diff = (1000000000.0 *(end.tv_sec - info->start.tv_sec) + end.tv_nsec - info->start.tv_nsec) / 1e9;
+      //double diff = (1000000000.0 *(end.tv_sec - start.tv_sec) + end.tv_nsec - start.tv_nsec) / 1e9;
+      //std::cout << diff << " resp: " << resp<< "\n";
+      std::cout << diff << "\n";
+    }
     /*
     mtx.lock();
     ++count;
@@ -87,26 +90,18 @@ void * process_request(void * _info) {
 }
 
 int main(int argc, char ** argv){
-    if (argc != 2 && argc != 3) {
-      std::cout << "./server numofrequest\n";
+    if (argc != 1 && argc != 2) {
+      std::cout << "./server\n";
+      std::cout << "To load test, run: ./server true\n";
       return -1;
     }
-    unsigned num_of_req;
-    try {
-      num_of_req = std::strtoul(argv[1], nullptr, 10);
-    }
-    catch (const std::exception &e) {
-      std::cout << "Invalid input\n";
-      std::cout << "./client host_name thread_num \n";
-      return -1;
-    }
-    bool init_server = true;
-    if (argc == 3) {
-      init_server = false;
+    bool load_test = false;
+    if (argc == 2) {
+      load_test= true;
     }
     Server server(PORT);
     pqxx::connection *C = start_connection();
-    if (init_server) {
+    if (!load_test) {
       create_table(C);
     }
     end_connection(C);
@@ -118,6 +113,7 @@ int main(int argc, char ** argv){
         ClientInfo* client_info = server.accept_connection();
        	Info* info = new Info(client_info, C);	
         info->start=start;
+        info->load_test = load_test;
         if (!pool->assign_task(bind(process_request, (void*)info))) {
           close(info->client_info->fd);
         }
