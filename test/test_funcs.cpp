@@ -90,8 +90,8 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
       ss << "<create><account id=\"" << std::to_string(++account_num) << "\" balance=\"100000\"/></create>";
       std::string req = ss.str();
       unsigned size = req.size();
-      send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
-      send(client.socket_fd, req.c_str(), req.size(), 0);
+      send(client.socket_fd, (char*)&size, sizeof(unsigned),MSG_NOSIGNAL);
+      send(client.socket_fd, req.c_str(), req.size(), MSG_NOSIGNAL);
       unsigned xml_len = 0;
       int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
       if (len == 0 || xml_len == 0) {
@@ -130,8 +130,8 @@ void send_create(const char * host_name, size_t account_num, size_t sym_num) {
         std::string req = ss.str();
         //std::cout << "request: " << req << std::endl;
         unsigned size = req.size();
-        send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
-        send(client.socket_fd, req.c_str(), req.size(), 0);
+        send(client.socket_fd, (char*)&size, sizeof(unsigned),MSG_NOSIGNAL);
+        send(client.socket_fd, req.c_str(), req.size(), MSG_NOSIGNAL);
         unsigned xml_len = 0;
         int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
         if (len == 0 || xml_len == 0) {
@@ -197,8 +197,8 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
       // std::cout << "request:\n" << req << "\n";
       unsigned size = req.size();
       Client client(host_name, "12345");
-      send(client.socket_fd, (char*)&size, sizeof(unsigned),0);
-      send(client.socket_fd, req.c_str(), req.size(), 0);
+      send(client.socket_fd, (char*)&size, sizeof(unsigned), MSG_NOSIGNAL);
+      send(client.socket_fd, req.c_str(), req.size(), MSG_NOSIGNAL);
       req.resize(0);
       unsigned xml_len = 0;
       int len = recv(client.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
@@ -262,8 +262,8 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         ss.str("");
         //std::cout << "cancel_request:\n" << cancel_req << "\n";
         unsigned cancel_size = cancel_req.size();
-        send(client_cancel.socket_fd, (char*)&cancel_size, sizeof(unsigned),0);
-        send(client_cancel.socket_fd, cancel_req.c_str(), cancel_req.size(), 0);
+        send(client_cancel.socket_fd, (char*)&cancel_size, sizeof(unsigned), MSG_NOSIGNAL);
+        send(client_cancel.socket_fd, cancel_req.c_str(), cancel_req.size(), MSG_NOSIGNAL);
         //std::cout << cancel_req << std::endl;
         cancel_req.resize(0);
         unsigned xml_len = 0;
@@ -294,8 +294,8 @@ void send_transactions(const char * host_name, size_t account_num, size_t sym_nu
         std::string query_req = ss.str();
         //std::cout << "query_request:\n" << query_req << "\n";
         unsigned query_size = query_req.size();
-        send(client_query.socket_fd, (char*)&query_size, sizeof(unsigned),0);
-        send(client_query.socket_fd, query_req.c_str(), query_req.size(), 0);
+        send(client_query.socket_fd, (char*)&query_size, sizeof(unsigned), MSG_NOSIGNAL);
+        send(client_query.socket_fd, query_req.c_str(), query_req.size(), MSG_NOSIGNAL);
         unsigned xml_len = 0;
         int len = recv(client_query.socket_fd, (char *)&xml_len, sizeof(unsigned), MSG_WAITALL);
         if (len == 0 || xml_len == 0) {
