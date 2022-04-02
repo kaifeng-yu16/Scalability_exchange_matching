@@ -9,6 +9,6 @@ all: $(TARGETS)
 clean:
 	rm -f $(TARGETS) *.o
 
-server: server.cpp request.cpp 
+server: server.cpp request.cpp threadpool.cpp 
 	g++ $^ -o $@ -lpthread $(EXTRAFLAGS)
 
