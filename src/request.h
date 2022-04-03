@@ -9,7 +9,7 @@
 #include <fstream>
 #include <iostream>
 #include <pqxx/pqxx>
-#include "../lib/rapidxml_ext.hpp"
+#include "lib/rapidxml_ext.hpp"
 
 std::string execute_request(std::string req, pqxx::connection* C);
 pqxx::connection* start_connection();

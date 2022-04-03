@@ -601,7 +601,7 @@ void create_table(pqxx::connection* C) {
 pqxx::connection* start_connection() {
   pqxx::connection *C;
   try{
-    C = new pqxx::connection("dbname=STOCK_MARKET user=postgres password=passw0rd");
+    C = new pqxx::connection("host=db port=5432 dbname=STOCK_MARKET user=postgres password=passw0rd");
     if (C->is_open()) {
       //std::cout << "Opened database successfully: " << C->dbname() << std::endl;
     } else {
